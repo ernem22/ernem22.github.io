@@ -55,14 +55,21 @@ const CLOSE = {
    name scales down. Nothing ever relayouts mid-animation.
    ────────────────────────────────────────────────────────────── */
 const stage = document.getElementById('stage');
+
+// The scenes run one full loop on arrival, then settle into their still
+// frame; hovering a panel wakes its own scene again (see styles.css).
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.body.classList.add('scenes-live');
+  setTimeout(() => document.body.classList.remove('scenes-live'), 9000);
+}
 const nameEl = document.querySelector('.name');
 {
   const text = nameEl.textContent.trim();
   nameEl.setAttribute('aria-label', text);
   let i = 0;
-  nameEl.innerHTML = [...text].map((ch) => ch === ' '
-    ? ' '
-    : `<span class="ch" style="--i:${i++}" aria-hidden="true"><i>${ch}</i></span>`).join('');
+  // letters are inline-blocks (each one a break opportunity), so each word is kept whole
+  nameEl.innerHTML = text.split(' ').map((word) => `<span class="w">${[...word].map((ch) =>
+    `<span class="ch" style="--i:${i++}" aria-hidden="true"><i>${ch}</i></span>`).join('')}</span>`).join(' ');
 }
 const panels = [...stage.querySelectorAll('.panel')];
 const ghost = stage.querySelector('.ghost');
@@ -128,6 +135,12 @@ function readout(panel, cfg, opening) {
   const total = cfg.ms + cfg.lag;
   measureEl.textContent = `${Math.round(s.width)} × ${Math.round(s.height)}`;
   const box = measureEl.getBoundingClientRect();   // widest the label gets; fixed-width digits below
+  // The header and the status bar hold controls: at the last corner the label would
+  // sit on top of them, so it keeps clear of both bands. Read once, before the loop.
+  // (offsetTop, not a rect: the status bar still carries its reveal's translateY here.)
+  const headEl = panel.querySelector('.d-head'), footEl = panel.querySelector('.d-status');
+  const headEnd = headEl.offsetTop + headEl.offsetHeight;
+  const footStart = footEl.offsetHeight ? footEl.offsetTop : Infinity;   // hidden on phones
   let last = '';
   const t0 = performance.now();
   measureEl.classList.add('on');
@@ -139,7 +152,7 @@ function readout(panel, cfg, opening) {
     const y = q[0] === 't' ? lift(q, py) + h : s.height - h;
     // sit just inside the moving corner (size measured once, before the loop)
     const lx = q[1] === 'l' ? x - box.width - 8 : x + 8;
-    const ly = q[0] === 't' ? y - box.height - 8 : y + 8;
+    const ly = q[0] === 't' ? Math.min(y - box.height - 8, footStart - box.height - 8) : Math.max(y + 8, headEnd + 8);
     const label = `${Math.round(w)} × ${Math.round(h)}`;
     if (label !== last) measureEl.firstChild.nodeValue = last = label;
     measureEl.style.transform = `translate(${Math.round(lx)}px, ${Math.round(ly)}px)`;
@@ -314,7 +327,8 @@ async function close() {
 }
 
 // The name's shadow echoes the hovered (or open) panel's accent.
-const ACCENT = { 'p-info': '#f6cf72', 'p-projects': '#aac5f1', 'p-tech': '#cdbaf4', 'p-contact': '#a8e0cb' };
+// (colours live in the CSS tokens: --acc-info, --acc-projects, …)
+const ACCENT = { 'p-info': 'var(--acc-info)', 'p-projects': 'var(--acc-projects)', 'p-tech': 'var(--acc-tech)', 'p-contact': 'var(--acc-contact)' };
 let hovered = null;
 function tintName(panel) {
   const p = current || panel;
@@ -379,7 +393,32 @@ document.querySelectorAll('.detail').forEach((d) => {
     if (w !== d.style.getPropertyValue('--sbw')) d.style.setProperty('--sbw', w);
   };
   syncSbw();
-  new ResizeObserver(syncSbw).observe(body);
+  // Contact centres a short block in a tall body. Halving the leftover in CSS
+  // lands on half pixels (blurred borders), so the offset is rounded here.
+  const centre = body.classList.contains('contact') ? () => {
+    // the address is mono text: its natural width is fractional, which would put
+    // the Copy button beside it on a half pixel
+    for (const el of body.querySelectorAll('.mail, .clock')) {
+      el.style.width = '';
+      el.style.width = `${Math.ceil(el.getBoundingClientRect().width)}px`;
+    }
+    body.style.paddingTop = '0px';
+    const free = body.clientHeight - body.scrollHeight;
+    body.style.paddingTop = `${Math.max(0, Math.floor(free / 2))}px`;
+  } : null;
+  // phone: the index becomes a strip of tabs whose widths follow their labels;
+  // round them up so their borders stay on whole pixels
+  const tabs = body.querySelector('.proj-list');
+  const snapTabs = tabs ? () => {
+    const strip = getComputedStyle(tabs).display === 'flex';
+    for (const b of tabs.querySelectorAll('button')) {
+      b.style.width = '';
+      if (strip) b.style.width = `${Math.ceil(b.getBoundingClientRect().width)}px`;
+    }
+  } : null;
+  const sync = () => { syncSbw(); centre?.(); snapTabs?.(); syncCols(d); };
+  sync();
+  new ResizeObserver(sync).observe(body);
 });
 
 let gridPinned = true;
@@ -594,11 +633,13 @@ const take = document.getElementById('take');
     const inner = picked.slice(1).sort((a, b) => a.d - b.d);
     const ox = w / 2 - ((Math.max(...xs) + Math.min(...xs)) / 2) * unit;
     const oy = h / 2 - ((Math.max(...ys) + Math.min(...ys)) / 2) * unit;
-    cloud.style.setProperty('--unit', `${unit.toFixed(1)}px`);
-    core.style.translate = `${(ox + picked[0].x * unit).toFixed(1)}px ${(oy + picked[0].y * unit).toFixed(1)}px`;
+    cloud.style.setProperty('--unit', `${Math.round(unit)}px`);
+    // the hover labels centre on their tile: a whole-pixel width keeps them crisp
+    for (const nm of cloud.querySelectorAll('.nm')) { nm.style.width = ''; nm.style.width = `${Math.ceil(nm.getBoundingClientRect().width / 2) * 2}px`; }   // even: it is centred by half its own width
+    core.style.translate = `${Math.round(ox + picked[0].x * unit)}px ${Math.round(oy + picked[0].y * unit)}px`;
     tiles.forEach((el, k) => {
       const c = inner[k];
-      el.style.translate = `${(ox + c.x * unit).toFixed(1)}px ${(oy + c.y * unit).toFixed(1)}px`;
+      el.style.translate = `${Math.round(ox + c.x * unit)}px ${Math.round(oy + c.y * unit)}px`;
     });
   }
   new ResizeObserver(layout).observe(cloud);
@@ -637,6 +678,7 @@ function openTake(btn) {
   let ox = '0%';
   if (x + w > body.clientWidth - 8) { x = r.left - b.left - w - 14; ox = '100%'; }
   if (x < 0) { x = Math.max(0, r.left - b.left + r.width / 2 - w / 2); y = r.bottom - b.top + body.scrollTop + 26; ox = '50%'; }
+  x = Math.max(0, Math.min(x, body.clientWidth - w - 8));   // never past either edge (narrow phones)
   y = Math.max(body.scrollTop, Math.min(y, body.scrollTop + body.clientHeight - h - 10));
   take.style.left = `${Math.round(x)}px`;
   take.style.top = `${Math.round(y)}px`;
