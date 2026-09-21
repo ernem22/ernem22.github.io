@@ -55,13 +55,6 @@ const CLOSE = {
    name scales down. Nothing ever relayouts mid-animation.
    ────────────────────────────────────────────────────────────── */
 const stage = document.getElementById('stage');
-
-// The scenes run one full loop on arrival, then settle into their still
-// frame; hovering a panel wakes its own scene again (see styles.css).
-if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  document.body.classList.add('scenes-live');
-  setTimeout(() => document.body.classList.remove('scenes-live'), 9000);
-}
 const nameEl = document.querySelector('.name');
 {
   const text = nameEl.textContent.trim();

@@ -1815,37 +1815,8 @@ a.soon { cursor: default; }
   .d-body.proj { grid-template-rows: minmax(300px, auto); }
 }
 
-/* ──────────────────────────────────────────────────────────────
-   Motion at rest — the scenes play one loop on arrival, then hold a
-   still frame. They run again while their panel is hovered or focused,
-   and nothing in them runs while a section is open (the scenes are
-   faded out there anyway, and a paused layer costs nothing).
-   The intro is a shared 9s timer (main.js), and the loops are 4, 6, 8 and
-   9s long, so a still frame is picked by shifting each loop so it stands
-   on that frame at the 9s mark:  delay = -((frame - 9s) mod loop).
-   The frame itself is in the comment ("said hi"); an alternate loop counts
-   there and back (4s alternate = 8s). Resuming continues from the frame.
-   ────────────────────────────────────────────────────────────── */
-.stage .panel .scene * { animation-play-state: paused; }   /* beats each element's own animation shorthand */
 /* the cloud only floats while its own section is open */
 .panel:not(.is-active) .tk button { animation-play-state: paused; }
-body.scenes-live .stage:not(.is-open) .scene *,
-.stage:not(.is-open) .panel:hover .scene *,
-.stage:not(.is-open) .panel:has(.face:focus-visible) .scene * { animation-play-state: running; }
-
-.scene--info .bubble    { animation-delay: -5.1s; }   /* frame 2.1s: said hi */
-.scene--projects .cursor { animation-delay: -5s; }    /* frame 2s: cursor on the button */
-.scene--projects .cta,
-.scene--projects .cta .a,
-.scene--projects .cta .b,
-.scene--projects .ring  { animation-delay: -3s; }     /* frame 0: button idle, no ring */
-.scene--tech .lt,
-.scene--tech .gt,
-.scene--tech .sl        { animation-delay: -1s; }     /* frame 2s: tag half open */
-.scene--contact .typing  { animation-delay: -.8s; }   /* frame 1.8s: the question */
-.scene--contact .sent    { animation-delay: -3.8s; }  /* frame 4.8s: the reply */
-.scene--contact .receipt { animation-delay: -4.6s; }  /* frame 5.6s: read */
-.scene--contact .plane   { animation-delay: -3.6s; }  /* frame 3.6s: mid-flight (9s loop: no shift) */
 
 @media (prefers-reduced-motion: reduce) {
   .name .ch, .name::after { animation: none !important; }
