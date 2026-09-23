@@ -1,54 +1,89 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Elian Moreau — Front-end Developer</title>
-  <meta name="description" content="Elian Moreau is an independent front-end developer in Lisbon, building fast, accessible interfaces and the design systems behind them.">
-  <meta name="theme-color" content="#f3ebdd">
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Elian Moreau — Front-end Developer">
-  <meta property="og:description" content="Fast, accessible interfaces and the design systems behind them. Lisbon, working worldwide.">
-  <meta property="og:image" content="assets/og.jpg">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Fonts load async so they can never block the boot screen's first paint.
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eren Macit</title>
+    <meta
+      name="description"
+      content="Elian Moreau is an independent front-end developer in Lisbon, building fast, accessible interfaces and the design systems behind them."
+    />
+    <meta name="theme-color" content="#f3ebdd" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Elian Moreau — Front-end Developer" />
+    <meta
+      property="og:description"
+      content="Fast, accessible interfaces and the design systems behind them. Lisbon, working worldwide."
+    />
+    <meta property="og:image" content="assets/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fonts load async so they can never block the boot screen's first paint.
        The screen waits for them before it lifts, so text doesn't swap in late. -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap" media="print" onload="this.media='all'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap"></noscript>
-  <link rel="stylesheet" href="styles.css">
-  <script src="data.js" defer></script>
-  <script src="main.js" defer></script>
-</head>
-<body>
-
-<!-- Boot screen: painted from static markup before any script runs, so the
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap"
+      media="print"
+      onload="this.media = 'all'"
+    />
+    <noscript
+      ><link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap"
+    /></noscript>
+    <link rel="stylesheet" href="styles.min.css" />
+    <script src="data.js" defer></script>
+    <script src="main.min.js" defer></script>
+  </head>
+  <body>
+    <!-- Boot screen: painted from static markup before any script runs, so the
      page never flashes empty. The four quadrants are the four territories. -->
-<div class="boot" id="boot" role="status" aria-live="polite">
-  <div class="boot-stage" aria-hidden="true">
-    <i class="boot-q q1"><span class="sym">:)</span><span class="n">01</span></i>
-    <i class="boot-q q2"><span class="sym">↗</span><span class="n">02</span></i>
-    <i class="boot-q q3"><span class="sym">&lt;/&gt;</span><span class="n">03</span></i>
-    <i class="boot-q q4"><span class="sym">@</span><span class="n">04</span></i>
-  </div>
-  <div class="boot-bar" aria-hidden="true"><i></i></div>
-  <p class="boot-log"><b data-boot-log>loading</b><i class="boot-caret" aria-hidden="true"></i></p>
-</div>
-<noscript>
-  <style>#boot { display: none !important; }</style>
-  <p class="boot-error">This portfolio renders from <code>data.js</code> with JavaScript. Please enable JavaScript and reload.</p>
-</noscript>
+    <div class="boot" id="boot" role="status" aria-live="polite">
+      <div class="boot-stage" aria-hidden="true">
+        <i class="boot-q q1"
+          ><span class="sym">:)</span><span class="n">01</span></i
+        >
+        <i class="boot-q q2"
+          ><span class="sym">↗</span><span class="n">02</span></i
+        >
+        <i class="boot-q q3"
+          ><span class="sym">&lt;/&gt;</span><span class="n">03</span></i
+        >
+        <i class="boot-q q4"
+          ><span class="sym">@</span><span class="n">04</span></i
+        >
+      </div>
+      <div class="boot-bar" aria-hidden="true"><i></i></div>
+      <p class="boot-log">
+        <b data-boot-log>loading</b
+        ><i class="boot-caret" aria-hidden="true"></i>
+      </p>
+    </div>
+    <noscript>
+      <style>
+        #boot {
+          display: none !important;
+        }
+      </style>
+      <p class="boot-error">
+        This portfolio renders from <code>data.js</code> with JavaScript. Please
+        enable JavaScript and reload.
+      </p>
+    </noscript>
 
-<header class="masthead">
-  <h1 class="name"></h1>
-</header>
+    <header class="masthead">
+      <h1 class="name"></h1>
+    </header>
 
-<main class="stage" id="stage"><!-- panels rendered from data.js --></main>
-
-</body>
+    <main class="stage" id="stage"><!-- panels rendered from data.js --></main>
+  </body>
 </html>

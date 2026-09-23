@@ -1723,7 +1723,9 @@ a.soon { cursor: default; }
   position: absolute;
   inset: 0;
   z-index: 4;
+  /* AVIF is ~3x smaller than the PNG; browsers without image-set fall back to it */
   background: url("assets/grain.png") .5px .5px / 256px 256px;
+  background-image: image-set(url("assets/grain.avif") type("image/avif"), url("assets/grain.png") type("image/png"));
   opacity: .55;
   pointer-events: none;
 }
@@ -1892,9 +1894,9 @@ a.soon { cursor: default; }
     radial-gradient(circle, rgba(134, 16, 36, .16) 1px, transparent 1.3px) 0 0 / 22px 22px,
     var(--cream);
   color: var(--cherry);
-  transition: opacity .55s var(--ease), visibility 0s linear .55s;
+  transition: opacity .55s var(--ease);
 }
-.boot.is-done { opacity: 0; visibility: hidden; pointer-events: none; }
+.boot.is-done { opacity: 0; pointer-events: none; }
 
 .boot-stage {
   position: relative;
