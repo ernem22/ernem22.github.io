@@ -1432,7 +1432,7 @@ button { font: inherit; color: inherit; }
   width: 100%;
   margin: 0;
   rotate: 0deg;
-  animation: none;
+  animation: bob-s var(--ft, 5s) ease-in-out var(--fd, 0s) infinite alternate;
   box-shadow: var(--sh-b);
 }
 .cloud.is-grid .tk.t1 button { width: 100%; }
@@ -1528,6 +1528,11 @@ button { font: inherit; color: inherit; }
 @keyframes bobble {
   0%   { transform: translate3d(0, -4px, 0) rotate(-1deg); }
   100% { transform: translate3d(0, 4px, 0) rotate(1deg); }
+}
+/* phones: same clock, gentler swing — tight grid keeps its composure */
+@keyframes bob-s {
+  0%   { transform: translate3d(0, -2px, 0) rotate(-.5deg); }
+  100% { transform: translate3d(0, 2px, 0) rotate(.5deg); }
 }
 /* first time the cloud appears, the i tabs pulse once so they read as tappable */
 .detail.is-in .tk button::after { animation: nudge 1.2s var(--ease) calc(.9s + var(--k, 0) * 40ms) 1 backwards; }
