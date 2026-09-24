@@ -5,12 +5,12 @@
    ────────────────────────────────────────────────────────────── */
 window.DATA = {
   "site": {
-    "name": "Elian Moreau",
-    "role": "Front-end Developer",
+    "name": "Eren Macit",
+    "role": "Software Developer",
     "meta": {
       "lang": "en",
-      "title": "Elian Moreau — Front-end Developer",
-      "description": "Elian Moreau is an independent front-end developer in Lisbon, building fast, accessible interfaces and the design systems behind them.",
+      "title": "Eren Macit — Software Developer",
+      "description": "Eren Macit is a software developer living in Istanbul. He loves trying new things; when it comes to aesthetics and details, however, he’s dangerously meticulous. An obsession with perfection? It’s like a bad superpower..",
       "themeColor": "#f3ebdd",
       "favicon": "assets/favicon.svg",
       "og": {
