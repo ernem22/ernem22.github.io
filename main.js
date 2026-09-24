@@ -877,28 +877,30 @@ function boot(data) {
     // One pass: gather every measurement, then write. Reading after a write forces a
     // synchronous reflow each time; batching the reads keeps it to a single one.
     const sync = () => {
-      const sbw = `${body.offsetWidth - body.clientWidth}px`;
-      // Contact centres a short block in a tall body. Reset the padding first so the
-      // leftover is measured from zero, then apply it once (rounded — CSS halves to
-      // half pixels, which blur the borders).
-      if (isContact) body.style.paddingTop = "0px";
-      const free = isContact ? body.clientHeight - body.scrollHeight : 0;
+      // Read-all, then write-all. The contact fix-up below is derived, not measured:
+      // the currently applied padding is known from state, so the unpadded leftover
+      // is arithmetic — no erase-write → measure → write dance, no feedback loop.
+      const sbw = body.offsetWidth - body.clientWidth;
+      const applied = isContact ? parseInt(body.style.paddingTop, 10) || 0 : 0;
+      const free = isContact ? body.clientHeight - body.scrollHeight + applied : 0;
       const strip =
         tabBtns.length > 0 && getComputedStyle(tabs).display === "flex";
-      if (strip) for (const b of tabBtns) b.style.width = "";
       const widths = strip
-        ? tabBtns.map((b) => `${Math.ceil(b.getBoundingClientRect().width)}px`)
+        ? tabBtns.map((b) => Math.ceil(b.getBoundingClientRect().width))
         : null;
+      const cols = syncCols(d, true); // read with the other measurements
 
+      // writes (no reads after this point)
       if (sbw !== d.style.getPropertyValue("--sbw"))
-        d.style.setProperty("--sbw", sbw);
+        d.style.setProperty("--sbw", `${sbw}px`);
       if (isContact)
         body.style.paddingTop = `${Math.max(0, Math.floor(free / 2))}px`;
       if (strip)
         tabBtns.forEach((b, i) => {
-          b.style.width = widths[i];
+          b.style.width = `${widths[i]}px`;
         });
-      syncCols(d);
+      if (cols)
+        d.querySelector(".d-status .cols").textContent = `${cols} ${UI.cols}`;
     };
     sync();
     new ResizeObserver(sync).observe(body);
@@ -917,9 +919,11 @@ function boot(data) {
   function flashGrid(detail) {
     showGrid(detail, gridPinned);
   }
-  // the status bar names the grid the content actually uses at this width
-  function syncCols(detail) {
+  // the status bar names the grid the content actually uses at this width;
+  // read=true measures during a read phase, the caller writes the label later
+  function syncCols(detail, read) {
     const cols = getComputedStyle(detail).getPropertyValue("--cols").trim();
+    if (read) return cols;
     detail.querySelector(".d-status .cols").textContent = `${cols} ${UI.cols}`;
   }
   function toggleGrid() {
