@@ -38,8 +38,8 @@ window.DATA = {
       "hintNav": "← → sections",
       "hintClose": "Esc close",
       "cols": "cols",
-      "dailyDriver": "daily driver",
-      "whenFits": "when it fits",
+      "dailyDriver": "core tool",
+      "whenFits": "on my radar",
       "showTake": "Show my take",
       "loading": "loading",
       "ready": "ready"
@@ -895,17 +895,11 @@ window.DATA = {
         "path": "~/stack",
         "layout": "tech",
         "content": {
-          "legend": [
-            {
-              "tier": 1,
-              "label": "Daily drivers — the inner ring"
-            },
-            {
-              "tier": 2,
-              "label": "When it fits — further out"
-            }
-          ],
-          "hint": "Click or tap any tile for my take"
+          "status": {
+            "core": "core",
+            "more": "on my radar"
+          },
+          "hint": "Tap a tile for my take"
         }
       }
     },

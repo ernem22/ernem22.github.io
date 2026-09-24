@@ -220,13 +220,6 @@ function mockMarkup(mock, name) {
   return `<div class="mock" aria-hidden="true"><div class="bar"><i></i><i></i><i></i><span>${esc(name)}</span></div><div class="screen"><p class="ln w70"></p><p class="ln w45"></p><p class="ln w55"></p></div></div>`;
 }
 
-/* Tier-1 tech names, listed beside the legend so the marks are never unnamed */
-function tierNames(tier) {
-  return (window.DATA?.tech || [])
-    .filter((t) => t.tier === tier)
-    .map((t) => t.name);
-}
-
 /* Detail bodies — each panel's layout describes its scope in data.js */
 function renderBody(p) {
   const c = p.detail.content;
@@ -309,15 +302,19 @@ function renderBody(p) {
         <div class="proj-views rv" style="--i:4">${views}</div>
       </div>`;
     }
-    case "tech":
+    case "tech": {
+      // status line: counts come straight from data.tech so the copy can't drift;
+      // each count carries the tile's tier swatch instead of explaining tiers away
+      const tech = window.DATA?.tech || [];
+      const core = tech.filter((t) => t.tier === 1).length;
+      const rest = tech.length - core;
+      const coreLabel = esc(c.status?.core ?? "core");
+      const moreLabel = esc(c.status?.more ?? "on my radar");
       return `<div class="d-body tech">
-        <div class="legend rv" style="--i:2">
-          ${c.legend
-            .map((l) => {
-              const names = l.tier === 1 ? tierNames(1) : [];
-              return `<span><i class="tier t${l.tier}"></i><span class="lg"><b>${esc(l.label)}</b>${names.length ? `<em class="names">${names.map(esc).join(" · ")}</em>` : ""}</span></span>`;
-            })
-            .join("")}
+        <div class="statusline rv" style="--i:2">
+          <span class="ct ct--core"><b>${core}</b>${coreLabel}</span>
+          <i class="sep" aria-hidden="true">·</i>
+          <span class="ct ct--more"><b>${rest}</b>${moreLabel}</span>
           <span class="hint">${esc(c.hint)}</span>
         </div>
         <div class="cloud rv" style="--i:3" data-cloud></div>
@@ -327,6 +324,7 @@ function renderBody(p) {
           <footer><span class="label">${esc(UI.usedIn)}</span><em></em></footer>
         </aside>
       </div>`;
+    }
     case "contact": {
       const socials = c.socials.items
         .map(
