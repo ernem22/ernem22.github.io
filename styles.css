@@ -1531,8 +1531,8 @@ button { font: inherit; color: inherit; }
 }
 /* phones: same clock, gentler swing — tight grid keeps its composure */
 @keyframes bob-s {
-  0%   { transform: translate3d(0, -2px, 0) rotate(-.5deg); }
-  100% { transform: translate3d(0, 2px, 0) rotate(.5deg); }
+  0%   { transform: translate3d(0, -3.5px, 0) rotate(-.8deg); }
+  100% { transform: translate3d(0, 3.5px, 0) rotate(.8deg); }
 }
 /* first time the cloud appears, the i tabs pulse once so they read as tappable */
 .detail.is-in .tk button::after { animation: nudge 1.2s var(--ease) calc(.9s + var(--k, 0) * 40ms) 1 backwards; }
