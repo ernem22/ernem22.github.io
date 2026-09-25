@@ -3,18 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Eren Macit</title>
+    <title>Eren Macit — Software Developer</title>
     <meta
       name="description"
-      content="Elian Moreau is an independent front-end developer in Lisbon, building fast, accessible interfaces and the design systems behind them."
+      content="Eren Macit is a software developer living in Istanbul. He loves trying new things; when it comes to aesthetics and details, however, he’s dangerously meticulous. An obsession with perfection? It’s like a bad superpower."
     />
-    <meta name="theme-color" content="#f3ebdd" />
+    <meta name="theme-color" content="#eadfcb" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Elian Moreau — Front-end Developer" />
+    <meta property="og:title" content="Eren Macit — Software Developer" />
     <meta
       property="og:description"
-      content="Fast, accessible interfaces and the design systems behind them. Lisbon, working worldwide."
+      content="Software developer in Istanbul — dangerously meticulous about aesthetics and details."
     />
     <meta property="og:image" content="assets/og.jpg" />
     <meta property="og:image:width" content="1200" />
@@ -27,18 +27,18 @@
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
       media="print"
       onload="this.media = 'all'"
     />
     <noscript
       ><link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Orbitron:wght@600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
     /></noscript>
     <link rel="stylesheet" href="styles.min.css" />
     <script src="data.js" defer></script>
@@ -46,27 +46,39 @@
   </head>
   <body>
     <!-- Boot screen: painted from static markup before any script runs, so the
-     page never flashes empty. The four quadrants are the four territories. -->
+     page never flashes empty. The four tiles are the four territories; each
+     real load step (data, render, paint, fonts) brings one of them online. -->
     <div class="boot" id="boot" role="status" aria-live="polite">
-      <div class="boot-stage" aria-hidden="true">
-        <i class="boot-q q1"
-          ><span class="sym">:)</span><span class="n">01</span></i
-        >
-        <i class="boot-q q2"
-          ><span class="sym">↗</span><span class="n">02</span></i
-        >
-        <i class="boot-q q3"
-          ><span class="sym">&lt;/&gt;</span><span class="n">03</span></i
-        >
-        <i class="boot-q q4"
-          ><span class="sym">@</span><span class="n">04</span></i
-        >
+      <div class="boot-card">
+        <div class="boot-head" aria-hidden="true">
+          <span data-boot-path>~/portfolio</span><b data-boot-pct>000</b>
+        </div>
+        <div class="boot-stage" aria-hidden="true">
+          <i class="boot-q q1"
+            ><span class="sym">:)</span><span class="n">01</span></i
+          >
+          <i class="boot-q q2"
+            ><span class="sym">↗</span><span class="n">02</span></i
+          >
+          <i class="boot-q q3"
+            ><span class="sym">&lt;/&gt;</span><span class="n">03</span></i
+          >
+          <i class="boot-q q4"
+            ><span class="sym">@</span><span class="n">04</span></i
+          >
+        </div>
+        <div class="boot-bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <ol class="boot-steps" aria-hidden="true">
+          <li class="is-active"><span>data.js</span><i></i><b></b></li>
+          <li><span>render</span><i></i><b></b></li>
+          <li><span>paint</span><i></i><b></b></li>
+          <li><span>fonts</span><i></i><b></b></li>
+        </ol>
+        <p class="boot-log">
+          <b data-boot-log>loading</b
+          ><i class="boot-caret" aria-hidden="true"></i>
+        </p>
       </div>
-      <div class="boot-bar" aria-hidden="true"><i></i></div>
-      <p class="boot-log">
-        <b data-boot-log>loading</b
-        ><i class="boot-caret" aria-hidden="true"></i>
-      </p>
     </div>
     <noscript>
       <style>
@@ -80,10 +92,11 @@
       </p>
     </noscript>
 
+    <!-- the masthead: the name as a pixel matrix, drawn on a canvas by main.js -->
     <header class="masthead">
       <h1 class="name"></h1>
     </header>
 
-    <main class="stage" id="stage"><!-- panels rendered from data.js --></main>
+    <main class="stage is-preintro" id="stage"><!-- panels rendered from data.js --></main>
   </body>
 </html>

@@ -7,16 +7,18 @@ window.DATA = {
   "site": {
     "name": "Eren Macit",
     "role": "Software Developer",
+    "based": "Istanbul",
+    "timezone": "Europe/Istanbul",
     "meta": {
       "lang": "en",
       "title": "Eren Macit — Software Developer",
-      "description": "Eren Macit is a software developer living in Istanbul. He loves trying new things; when it comes to aesthetics and details, however, he’s dangerously meticulous. An obsession with perfection? It’s like a bad superpower..",
-      "themeColor": "#f3ebdd",
+      "description": "Eren Macit is a software developer living in Istanbul. He loves trying new things; when it comes to aesthetics and details, however, he’s dangerously meticulous. An obsession with perfection? It’s like a bad superpower.",
+      "themeColor": "#eadfcb",
       "favicon": "assets/favicon.svg",
       "og": {
         "type": "website",
-        "title": "Elian Moreau — Front-end Developer",
-        "description": "Fast, accessible interfaces and the design systems behind them. Lisbon, working worldwide.",
+        "title": "Eren Macit — Software Developer",
+        "description": "Software developer in Istanbul — dangerously meticulous about aesthetics and details.",
         "image": "assets/og.jpg",
         "imageWidth": 1200,
         "imageHeight": 630
@@ -34,9 +36,9 @@ window.DATA = {
       "copyFallback": "Press ⌘/Ctrl + C",
       "soon": "Link coming soon",
       "grid": "Layout grid",
-      "hintGrid": "G grid",
-      "hintNav": "← → sections",
-      "hintClose": "Esc close",
+      "hintGrid": "grid",
+      "hintNav": "sections",
+      "hintClose": "close",
       "cols": "cols",
       "dailyDriver": "core tool",
       "whenFits": "on my radar",
@@ -308,28 +310,28 @@ window.DATA = {
             "label": "Experience",
             "items": [
               {
-                "period": "2023 — now",
+                "period": "2023–now",
                 "current": true,
                 "role": "Independent Front-end Developer",
                 "place": "Lisbon · remote",
                 "desc": "Design systems, performance audits and product builds."
               },
               {
-                "period": "2020 — 2023",
+                "period": "2020–2023",
                 "current": false,
                 "role": "Senior Front-end Engineer",
                 "place": "Halden, Copenhagen",
                 "desc": "Led a platform team of six; 40+ apps onto one library, LCP 3.8s → 1.4s."
               },
               {
-                "period": "2018 — 2020",
+                "period": "2018–2020",
                 "current": false,
                 "role": "Front-end Developer",
                 "place": "Sillage Studio, Paris",
                 "desc": "Interactive campaigns and WebGL product configurators."
               },
               {
-                "period": "2016 — 2018",
+                "period": "2016–2018",
                 "current": false,
                 "role": "Junior Developer",
                 "place": "Northfold, Porto",
@@ -351,7 +353,7 @@ window.DATA = {
                 },
                 {
                   "text": "Contributions to Vite, Radix & Astro",
-                  "meta": "2021 — now"
+                  "meta": "2021–now"
                 }
               ]
             }
@@ -372,7 +374,7 @@ window.DATA = {
       "face": {
         "index": "02 — Selected Work",
         "title": "Projects",
-        "teaser": "Products, systems and open-source tools, 2022 — 2025.",
+        "teaser": "Products, systems and open‑source tools, 2022–2025.",
         "label": "Open Projects"
       },
       "detail": {
@@ -970,15 +972,15 @@ window.DATA = {
             "label": "Availability",
             "before": "Open to contract work from",
             "date": "January 2027",
-            "after": "design systems, performance audits, or building the product alongside your team.",
+            "after": "— design systems, performance audits, or building the product alongside your team.",
             "terms": [
               {
                 "label": "Engagement",
-                "value": "6 — 16 weeks"
+                "value": "6–16 weeks"
               },
               {
                 "label": "Commitment",
-                "value": "3 — 5 days / week"
+                "value": "3–5 days / week"
               }
             ]
           },

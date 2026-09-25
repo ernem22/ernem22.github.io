@@ -27,9 +27,9 @@ const UI_DEFAULTS = {
   copyFallback: "Press ⌘/Ctrl + C",
   soon: "Link coming soon",
   grid: "Layout grid",
-  hintGrid: "G grid",
-  hintNav: "← → sections",
-  hintClose: "Esc close",
+  hintGrid: "grid",
+  hintNav: "sections",
+  hintClose: "close",
   cols: "cols",
   dailyDriver: "daily driver",
   whenFits: "when it fits",
@@ -71,7 +71,7 @@ function sceneMarkup(scene) {
         <div class="app">
           <div class="app-bar"><i></i><i></i><i></i></div>
           <div class="app-body"><b></b><b class="s"></b>
-            <div class="cta"><span class="a">${esc(chips[0])}</span><span class="b">${esc(chips[1])}</span></div>
+            <div class="cta"><span class="a">${esc(chips[0])}</span><span class="b">${esc(chips[1])}</span><i class="bits"><b></b><b></b><b></b><b></b><b></b></i></div>
           </div>
         </div>
         <div class="ring"></div>
@@ -85,7 +85,9 @@ function sceneMarkup(scene) {
       <div class="chip c1">${esc(chips[0])}</div>
       <div class="chip c2 near">${esc(chips[1])}</div>
       <div class="glyph">
-        <div class="bob"><span class="lt">&lt;</span><span class="sl">/</span><span class="gt">&gt;</span><i class="caret"></i></div>
+        <div class="bob"><span class="lt">&lt;</span><span class="sl">/</span><span class="gt">&gt;</span><i class="caret"></i>
+          <div class="sel"><i class="box"></i><i class="h tl"></i><i class="h tr"></i><i class="h bl"></i><i class="h br"></i><span class="fr">stack.tsx</span><span class="dm">hug × hug</span></div>
+        </div>
       </div>
     </div>`;
     case "contact":
@@ -97,6 +99,7 @@ function sceneMarkup(scene) {
         <div class="msg sent">${esc(scene.sent)} <em>→</em></div>
         <div class="receipt">${esc(scene.receipt)}</div>
       </div>
+      <svg class="trail" viewBox="0 0 66 10" preserveAspectRatio="none"><path d="M0 6 C 12 1, 24 10, 38 5 S 58 1, 66 3" vector-effect="non-scaling-stroke"/></svg>
       <svg class="plane" viewBox="0 0 48 48"><path class="p1" d="M4 22 L44 6 L30 42 L22 28 Z"/><path class="p2" d="M22 28 L44 6 L18 25 Z"/></svg>
     </div>`;
     default:
@@ -231,7 +234,7 @@ function renderBody(p) {
       const stats = c.stats
         .map(
           (s) =>
-            `<div><dt>${esc(s.label)}</dt><dd>${esc(s.value)}${s.unit ? `<small>${esc(s.unit)}</small>` : ""}</dd></div>`,
+            `<div><dt>${esc(s.label)}</dt><dd><span class="num">${esc(s.value)}</span>${s.unit ? `<small>${esc(s.unit)}</small>` : ""}</dd></div>`,
         )
         .join("");
       const code = c.code.lines
@@ -356,7 +359,7 @@ function renderBody(p) {
         </div>
         <div class="c-col rv" style="--i:5">
           <span class="label">${esc(c.availability.label)}</span>
-          <p class="avail">${esc(c.availability.before)} <em>${esc(c.availability.date)}</em> ${esc(c.availability.after)}</p>
+          <p class="avail">${esc(c.availability.before)} <em>${esc(c.availability.date)}</em>${/^[—–]/.test(c.availability.after || "") ? "&nbsp;" : " "}${esc(c.availability.after)}</p>
           <ul class="terms">${terms}</ul>
           <p class="tz"><span class="label">${esc(c.clock.label)}</span> <b id="clock">--:--:--</b> <span>${esc(c.clock.note)}</span></p>
         </div>
@@ -483,34 +486,368 @@ const CLOSE = {
 };
 
 /* ──────────────────────────────────────────────────────────────
+   Name — a pixel mosaic on a canvas.
+   Each letter is a 5×7 bitmap; with room, every one of its pixels is split
+   into 2×2 squares. Every square has a fixed colour, one of the four
+   sections' grounds, scattered like a mosaic. Squares rise straight up off
+   the page as small blocks (inked face, cherry side below); at rest they
+   all stand a little, and the pointer — wherever it is on the page — raises
+   the ones nearest it, the rest sinking back with distance. Over a section,
+   that section's squares stand up a touch more. Colours never change; only
+   which squares are up does. The name reads at every moment.
+   ────────────────────────────────────────────────────────────── */
+const PIXEL_FONT = {
+  A: [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+  B: ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+  C: [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
+  D: ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+  E: ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+  F: ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
+  G: [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
+  H: ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+  I: ["###", ".#.", ".#.", ".#.", ".#.", ".#.", "###"],
+  J: ["..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."],
+  K: ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"],
+  L: ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+  M: ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
+  N: ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"],
+  O: [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+  P: ["####.", "#...#", "#...#", "####.", "#....", "#....", "#...."],
+  Q: [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"],
+  R: ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+  S: [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+  T: ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
+  U: ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+  V: ["#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."],
+  W: ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"],
+  X: ["#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"],
+  Y: ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
+  Z: ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"],
+};
+
+// Bold cuts (8 tall, two-pixel stems) for the letters that have been drawn;
+// any other letter is thickened from the 5×7 set automatically.
+const PIXEL_BOLD = {
+  A: [".####.", "######", "##..##", "##..##", "######", "######", "##..##", "##..##"],
+  C: [".#####", "######", "##....", "##....", "##....", "##....", "######", ".#####"],
+  E: ["######", "######", "##....", "#####.", "#####.", "##....", "######", "######"],
+  I: ["##", "##", "##", "##", "##", "##", "##", "##"],
+  M: ["##...##", "###.###", "#######", "##.#.##", "##...##", "##...##", "##...##", "##...##"],
+  N: ["##...##", "###..##", "####.##", "##.####", "##..###", "##...##", "##...##", "##...##"],
+  R: ["#####.", "######", "##..##", "######", "#####.", "##.##.", "##..##", "##..##"],
+  T: ["######", "######", "..##..", "..##..", "..##..", "..##..", "..##..", "..##.."],
+};
+const boldGlyph = (ch) => {
+  if (PIXEL_BOLD[ch]) return PIXEL_BOLD[ch];
+  const g = PIXEL_FONT[ch];
+  if (!g) return null;
+  // thicken: every pixel also fills the one to its right; the middle row doubles
+  const wide = g.map((row) => [...row + "."].map((v, x) => (v === "#" || row[x - 1] === "#" ? "#" : ".")).join(""));
+  return [...wide.slice(0, 4), wide[3], ...wide.slice(4)];
+};
+
+function mountPixelName(nameEl) {
+  const text = nameEl.textContent.trim();
+  nameEl.innerHTML = `<span class="sr">${esc(text)}</span><canvas aria-hidden="true"></canvas>`;
+  const cv = nameEl.querySelector("canvas");
+  const ctx = cv.getContext("2d");
+
+  const rgb = (v) => {
+    let h = String(v).trim().replace("#", "");
+    if (h.length === 3) h = [...h].map((c) => c + c).join("");
+    const n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const css = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+  const INK = rgb(getComputedStyle(document.documentElement).getPropertyValue("--cherry") || "#861024");
+  // the four sections' grounds — the mid tones of their scenes' gradients
+  const SECTIONS = ["info", "projects", "tech", "contact"];
+  const TONES = [rgb("#f3bd6c"), rgb("#8fb1ea"), rgb("#bda5ef"), rgb("#86cfb9")];
+  const PAPER = rgb("#fffaf0");
+  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+
+  // lay the text out in font pixels (1px between letters, 4 for a space)
+  const on = new Set();
+  let fw = 0;
+  for (const ch of text.toUpperCase()) {
+    const g = boldGlyph(ch);
+    if (!g) {
+      fw += ch === " " ? 3 : 4;
+      continue;
+    }
+    g.forEach((row, y) => [...row].forEach((v, x) => v === "#" && on.add(`${fw + x},${y}`)));
+    fw += g[0].length + 1;
+  }
+  fw = Math.max(1, fw - 1);
+  const FH = 8;
+
+  let s = 2, // squares per font pixel, per side
+    p = 7, // pitch of one square, css px
+    q = 6, // drawn square size
+    M = 2, // matrix margin round the letters, in squares
+    cols = 0,
+    rows = 0,
+    RISE = 12, // a square's full height, css px
+    LY = 0, // headroom above the matrix for the rise
+    RX = 0, // room on the right for the cast shadows
+    dpr = 1,
+    cells = [], // every square of the matrix
+    lit = []; // the letters' squares, top row first (draw order)
+
+  // a stable pseudo-random per square, so a resize never reshuffles the mosaic
+  const hash = (c, r, k) => {
+    let h = Math.imul(c + 1, 73856093) ^ Math.imul(r + 1, 19349663) ^ Math.imul(k + 7, 83492791);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return (h ^ (h >>> 16)) >>> 0;
+  };
+
+  function build() {
+    const avail = nameEl.parentElement.clientWidth || innerWidth;
+    const pitch = (sub) =>
+      Math.floor(Math.min((avail * 0.95) / ((fw + 6) * sub), (innerHeight * 0.17) / ((FH + 2) * sub), 9));
+    s = pitch(2) >= 5 ? 2 : 1; // many small squares when there's room for them
+    p = Math.max(3, pitch(s));
+    q = p - Math.max(1, Math.round(p * 0.16));
+    M = s;
+    cols = fw * s + 2 * M;
+    rows = FH * s + 2 * M;
+    RISE = Math.round(p * 2.6);
+    LY = RISE + 2;
+    RX = Math.ceil(RISE * 0.45) + 1;
+    const prev = new Map(cells.map((c) => [c.k, c]));
+    cells = [];
+    const tone = new Map(); // mosaic: no two touching squares share a colour
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++) {
+        const fx = Math.floor((c - M) / s),
+          fy = Math.floor((r - M) / s);
+        const isLit = c >= M && r >= M && c < cols - M && r < rows - M && on.has(`${fx},${fy}`);
+        const k = `${c},${r}`;
+        let t = hash(c, r, s) % 4;
+        for (let i = 0; i < 4 && (t === tone.get(`${c - 1},${r}`) || t === tone.get(`${c},${r - 1}`)); i++)
+          t = (t + 1) % 4;
+        tone.set(k, t);
+        const old = prev.get(k);
+        cells.push({
+          k,
+          c,
+          r,
+          lit: isLit,
+          x: c * p,
+          y: r * p,
+          tone: t,
+          l: old ? old.l : 0, // how far up, 0..1
+          at: old ? old.at : 0, // when it lands (intro)
+          landed: old ? old.landed : false,
+        });
+      }
+    lit = cells.filter((c) => c.lit); // already top row first
+    dpr = Math.min(2, devicePixelRatio || 1);
+    const w = cols * p + RX,
+      h = rows * p + LY + Math.ceil(RISE * 0.2);
+    cv.style.width = `${w}px`;
+    cv.style.height = `${h}px`;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    // the caret: three font pixels by one, one pixel after the name, on its baseline
+    nameEl.style.setProperty("--cw", `${3 * s * p - (p - q)}px`);
+    nameEl.style.setProperty("--ch", `${s * p - (p - q)}px`);
+    nameEl.style.setProperty("--cb", `${M * p + (p - q) + Math.ceil(RISE * 0.2)}px`);
+    nameEl.style.setProperty("--cg", `${-RX}px`); // the shadow room isn't part of the name
+    nameEl.style.setProperty("--lx", "0px");
+    introPlanned = false;
+    kick();
+  }
+
+  const REST = 0.14; // at rest every square stands a little: never flat
+  let ptr = null, // pointer, client coords
+    raf = 0,
+    last = 0,
+    lastDraw = 0,
+    lastMove = -1e9,
+    introPlanned = false,
+    introEnd = Infinity,
+    waveAt = -1e9,
+    boostKey = -1, // the hovered section: its squares stand up a touch more
+    boostAmt = 0;
+  const WAVE_MS = 1800;
+
+  function kick() {
+    if (!raf) raf = requestAnimationFrame(frame);
+  }
+
+  function frame(now) {
+    raf = 0;
+    const dt = Math.min(64, last ? now - last : 16);
+    last = now;
+    if (!document.body.classList.contains("is-staged")) {
+      raf = requestAnimationFrame(frame); // wait for the stage to arrive
+      return;
+    }
+    if (!introPlanned) {
+      introPlanned = true;
+      // intro: the squares drop in left to right, each a touch off the beat
+      for (const cell of lit)
+        if (!cell.at) cell.at = reduced ? now : now + 120 + (cell.c / cols) * 900 + Math.random() * 180;
+      introEnd = lit.reduce((m, c) => Math.max(m, c.at), 0) + 1200;
+    }
+    const waveT = (now - waveAt) / WAVE_MS;
+    const waving = waveT >= 0 && waveT <= 1 && !reduced;
+    // nothing moving but the settle: 30 frames a second is plenty
+    if (!waving && now - lastMove > 1500 && now > introEnd && now - lastDraw < 33) {
+      kick();
+      return;
+    }
+    lastDraw = now;
+
+    const box = cv.getBoundingClientRect();
+    const H = rows * p;
+    let px = null,
+      py = null;
+    if (ptr && !reduced) {
+      px = ptr.x - box.left;
+      py = ptr.y - box.top - LY;
+    }
+    const D = H * 1.7; // half-strength distance of the pointer's pull
+    const R = p * 10; // the close-up peak
+    const wc = -8 * s + (cols + 16 * s) * waveT;
+    const kb = 1 - Math.exp(-dt / 220);
+    boostAmt += ((boostKey >= 0 ? 1 : 0) - boostAmt) * kb;
+
+    const kUp = 1 - Math.exp(-dt / 70),
+      kDn = 1 - Math.exp(-dt / 260);
+    let busy = Math.abs((boostKey >= 0 ? 1 : 0) - boostAmt) > 0.004;
+    for (const cell of lit) {
+      if (now < cell.at) {
+        busy = true;
+        continue;
+      }
+      if (!cell.landed) {
+        cell.landed = true;
+        cell.l = reduced ? REST : 1.15; // drops in from above, settles
+      }
+      const cx = cell.x + p / 2,
+        cy = cell.y + p / 2;
+      let t = REST;
+      if (px !== null) {
+        // the pull: anywhere on the page, nearest squares highest
+        const d = Math.hypot(cx - px, cy - py);
+        const g = 1 / (1 + (d / D) ** 2);
+        const f = Math.max(0, 1 - d / R);
+        t = REST + (1 - REST) * Math.max(g * g * 0.85, f * f * (3 - 2 * f));
+      }
+      if (cell.tone === boostKey) t += 0.3 * boostAmt * (1 - t);
+      if (waving) t = Math.max(t, REST + 0.5 * Math.exp(-(((cell.c - wc) / (3.4 * s)) ** 2)));
+      cell.l += (t - cell.l) * (t > cell.l ? kUp : kDn);
+      if (Math.abs(t - cell.l) < 0.002) cell.l = t;
+      else busy = true;
+    }
+
+    draw(px, py, R);
+    if (busy || waving) kick();
+  }
+
+  function draw(px, py, R) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.translate(0, LY);
+    const now = performance.now();
+    ctx.lineWidth = 1;
+    // the empty matrix, faintly, round the pointer when it's close
+    if (px !== null) {
+      for (const cell of cells) {
+        if (cell.lit) continue;
+        const f = 1 - Math.hypot(cell.x + p / 2 - px, cell.y + p / 2 - py) / R;
+        if (f <= 0) continue;
+        ctx.strokeStyle = css(INK, 0.16 * f * f);
+        ctx.strokeRect(cell.x + 0.5, cell.y + 0.5, q - 1, q - 1);
+      }
+    }
+    // what each block throws on the page: a hard shadow down-right, the
+    // longer the higher it stands (the site's sticker shadow, grown by height)
+    ctx.fillStyle = css(INK, 0.2);
+    for (const cell of lit) {
+      if (now < cell.at || cell.l < 0.02) continue;
+      const h = cell.l * RISE;
+      ctx.fillRect(cell.x + h * 0.45, cell.y + h * 0.2, q, q);
+    }
+    // the blocks, top row first: a lower block's face covers the side of the
+    // one above it, as it would seen from the front
+    for (const cell of lit) {
+      if (now < cell.at) continue;
+      const h = Math.round(cell.l * RISE * 2) / 2; // half pixels: crisp at 2x
+      const y = cell.y - h;
+      // its side, from the face down to where it stands
+      ctx.fillStyle = css(INK);
+      ctx.fillRect(cell.x, y + q - 1, q, h + 1);
+      // its face, in its own colour — lit by its height: up high it catches the
+      // light, down low it sits in the others' shade (light, not a new colour)
+      const tone = TONES[cell.tone];
+      ctx.fillStyle = css(
+        cell.l > 0.5 ? mix(tone, PAPER, (cell.l - 0.5) * 0.7) : mix(tone, INK, (0.5 - cell.l) * 0.32),
+      );
+      ctx.fillRect(cell.x, y, q, q);
+      if (q >= 4) {
+        ctx.strokeStyle = css(INK);
+        ctx.strokeRect(cell.x + 0.5, y + 0.5, q - 1, q - 1);
+      }
+    }
+  }
+
+  if (!reduced) {
+    addEventListener(
+      "pointermove",
+      (e) => {
+        ptr = { x: e.clientX, y: e.clientY };
+        lastMove = performance.now();
+        kick();
+      },
+      { passive: true },
+    );
+    const away = () => {
+      ptr = null;
+      lastMove = performance.now();
+      kick();
+    };
+    document.documentElement.addEventListener("pointerleave", away);
+    addEventListener("pointerup", (e) => e.pointerType !== "mouse" && setTimeout(away, 500));
+    // no pointer about (or a touch screen): a gentle wave now and then
+    const wave = () =>
+      setTimeout(() => {
+        if (!document.hidden && !ptr) {
+          waveAt = performance.now();
+          kick();
+        }
+        wave();
+      }, 9000 + Math.random() * 6000);
+    wave();
+  }
+  document.addEventListener("visibilitychange", () => !document.hidden && kick());
+  new ResizeObserver(build).observe(nameEl.parentElement);
+
+  return {
+    // the hovered / open section: its squares stand up a touch more
+    tint(key) {
+      boostKey = SECTIONS.indexOf(key);
+      kick();
+    },
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────
    The engine. Runs once the stage has been rendered from data.js.
    ────────────────────────────────────────────────────────────── */
 function boot(data) {
   const stage = document.getElementById("stage");
   const nameEl = document.querySelector(".name");
-  {
-    const text = nameEl.textContent.trim();
-    nameEl.setAttribute("aria-label", text);
-    let i = 0;
-    // letters are inline-blocks (each one a break opportunity), so each word is kept whole
-    nameEl.innerHTML = text
-      .split(" ")
-      .map(
-        (word) =>
-          `<span class="w">${[...word]
-            .map(
-              (ch) =>
-                `<span class="ch" style="--i:${i++}" aria-hidden="true"><i>${ch}</i></span>`,
-            )
-            .join("")}</span>`,
-      )
-      .join(" ");
-  }
+  const pixelName = mountPixelName(nameEl);
+
   const panels = [...stage.querySelectorAll(".panel")];
   const ghost = stage.querySelector(".ghost");
   const GUTTER = 8;
-  const NAME_SCALE = 0.5; // the name's size while a panel is open
-  document.documentElement.style.setProperty("--name-k", NAME_SCALE);
+  // The masthead is a sheet of its own and stays put while a panel is open (the
+  // name used to shrink and free space for the stage: --off stays 0 now).
+  const NAME_SCALE = 1;
 
   let rest = { sx: 0.5, sy: 0.5, off: 0 };
 
@@ -542,7 +879,17 @@ function boot(data) {
     setVar("--off", `${off}px`);
     setVar("--sx0", rest.sx.toFixed(5));
     setVar("--sy0", rest.sy.toFixed(5));
-    setVar("--a0", Math.max(rest.sx, rest.sy).toFixed(5));
+    const a0 = Math.max(rest.sx, rest.sy);
+    setVar("--a0", a0.toFixed(5));
+    // The art keeps its aspect, so it's scaled by the larger side; along the
+    // tighter side it overhangs the quadrant. Anchor it so the overhang splits
+    // evenly between both edges (centre of the art on the quadrant's centre)
+    // rather than all of it falling off the far edge. The art box is the canvas
+    // plus a 6% bleed each side; at a square quadrant this is the 5.357% corner.
+    const anchor = (sv) =>
+      `${(((sv / 2 + 0.06 - 0.56 * a0) / (1 - a0) / 1.12) * 100).toFixed(3)}%`;
+    setVar("--aox", anchor(rest.sx));
+    setVar("--aoy", anchor(rest.sy));
   }
   const ro = new ResizeObserver(measure);
   ro.observe(stage);
@@ -662,7 +1009,6 @@ function boot(data) {
     const to = dTitle.getBoundingClientRect();
 
     stage.classList.add("is-open");
-    nameEl.classList.add("is-small");
     panel.classList.add("is-active", "is-reading");
     panels.forEach((p) => {
       if (p !== panel) p.classList.add("is-receding");
@@ -696,6 +1042,7 @@ function boot(data) {
       detail.classList.add("is-in");
       flashGrid(detail);
       syncCols(detail);
+      countUp(detail);
     }, OPEN.ms * 0.5);
 
     await anims[0].finished;
@@ -709,6 +1056,7 @@ function boot(data) {
     panel.classList.add("is-expanded");
     anims.forEach((a) => a.cancel());
     clearTimeout(reveal);
+    if (!detail.classList.contains("is-in")) countUp(detail);
     detail.classList.add("is-in");
     dTitle.focus({ preventScroll: true });
     state = "open";
@@ -730,7 +1078,6 @@ function boot(data) {
       p.inert = false;
     });
     stage.classList.remove("is-open");
-    nameEl.classList.remove("is-small");
 
     const k = keyframes(CLOSE, false, panel.dataset.q);
     const opts = { duration: k.total, easing: "linear" };
@@ -750,19 +1097,14 @@ function boot(data) {
     );
     showGhost(panel, k.total, 0.55);
 
-    // Mirror of the open: the content rides the shrink and only leaves once the
-    // panel is most of the way home, so the close reads as a section folding back
-    // into its tile instead of the panel blinking empty.
-    const settle = () => {
-      detail.classList.remove("is-in");
-      showGrid(detail, false);
-      detail.classList.add("is-out");
-    };
-    const hide = setTimeout(settle, k.total * 0.55);
+    // The content steps out first (a quick fade, before the shrinking window can
+    // crop it mid-line); only the title rides the whole way home, above it all.
+    detail.classList.remove("is-in");
+    showGrid(detail, false);
+    detail.classList.add("is-out", "is-closing");
 
     await Promise.all([anims[0].finished, flight.finished]).catch(() => {});
-    clearTimeout(hide);
-    settle();
+    detail.classList.remove("is-closing");
     setTitleVisible(fTitle, true);
     flight.cancel();
     panel.classList.remove("is-active");
@@ -786,26 +1128,31 @@ function boot(data) {
     panels.map((p) => [p.id, `var(--acc-${p.id.replace(/^p-/, "")})`]),
   );
   let hovered = null;
+  const mast = nameEl.closest(".masthead");
   function tintName(panel) {
     const p = current || panel;
+    pixelName.tint(p ? p.id.replace(/^p-/, "") : null);
     if (p) {
-      nameEl.style.setProperty("--nacc", ACCENT[p.id]);
-      nameEl.style.setProperty("--k", ACCENT[p.id]);
+      mast.style.setProperty("--nacc", ACCENT[p.id]);
+      mast.style.setProperty("--k", ACCENT[p.id]);
     } else {
-      nameEl.style.removeProperty("--nacc");
-      nameEl.style.removeProperty("--k");
+      mast.style.removeProperty("--nacc");
+      mast.style.removeProperty("--k");
     }
   }
 
   panels.forEach((panel) => {
     const face = panel.querySelector(".face");
+    // the hub leans toward the hovered corner and the other three step back
     face.addEventListener("pointerenter", () => {
       hovered = panel;
       tintName(panel);
+      stage.dataset.hover = panel.dataset.q;
     });
     face.addEventListener("pointerleave", () => {
       hovered = null;
       tintName(null);
+      delete stage.dataset.hover;
     });
     panel.querySelector(".detail").inert = true; // painted but hidden: keep it out of focus / a11y
     face.addEventListener("click", () => act(() => open(panel)));
@@ -847,7 +1194,8 @@ function boot(data) {
 
   /* ──────────────────────────────────────────────────────────────
      Layout grid overlay — the lines are the real column tracks the content
-     sits on. On by default; G (or the switch in the status bar) hides it.
+     sits on. It flashes once, on the first section opened, then gets out of the
+     way; G (or the switch in the status bar) pins it on.
      ────────────────────────────────────────────────────────────── */
   // Overlay + scroll fades: non-scrolling layers on the body's grid cell.
   document.querySelectorAll(".detail").forEach((d) => {
@@ -856,7 +1204,7 @@ function boot(data) {
       "beforeend",
       `
       <footer class="d-status rv" style="--i:8">
-        <button type="button" class="grid-btn" aria-pressed="true"><span class="sw" aria-hidden="true"></span>${esc(UI.grid)}</button>
+        <button type="button" class="grid-btn" aria-pressed="false"><span class="sw" aria-hidden="true"></span>${esc(UI.grid)}</button>
         <span class="cols"></span>
         <span class="hints"><span><kbd>G</kbd> ${esc(UI.hintGrid)}</span><span><kbd>←</kbd> <kbd>→</kbd> ${esc(UI.hintNav)}</span><span><kbd>Esc</kbd> ${esc(UI.hintClose)}</span></span>
       </footer>`,
@@ -877,12 +1225,17 @@ function boot(data) {
     // One pass: gather every measurement, then write. Reading after a write forces a
     // synchronous reflow each time; batching the reads keeps it to a single one.
     const sync = () => {
-      // Read-all, then write-all. The contact fix-up below is derived, not measured:
-      // the currently applied padding is known from state, so the unpadded leftover
-      // is arithmetic — no erase-write → measure → write dance, no feedback loop.
+      // Read-all, then write-all. The contact block's height is the span of its
+      // children (scrollHeight never drops below clientHeight, so it can't tell how
+      // much room is left); padding moves them all alike, so there's no feedback loop.
       const sbw = body.offsetWidth - body.clientWidth;
-      const applied = isContact ? parseInt(body.style.paddingTop, 10) || 0 : 0;
-      const free = isContact ? body.clientHeight - body.scrollHeight + applied : 0;
+      let free = 0;
+      if (isContact) {
+        const kids = [...body.children];
+        const top = Math.min(...kids.map((k) => k.offsetTop));
+        const bottom = Math.max(...kids.map((k) => k.offsetTop + k.offsetHeight));
+        free = body.clientHeight - (bottom - top);
+      }
       const strip =
         tabBtns.length > 0 && getComputedStyle(tabs).display === "flex";
       const widths = strip
@@ -906,7 +1259,8 @@ function boot(data) {
     new ResizeObserver(sync).observe(body);
   });
 
-  let gridPinned = true;
+  let gridPinned = false;
+  let gridFlashed = false;
   let gridTimer = 0;
 
   function showGrid(detail, on) {
@@ -916,9 +1270,43 @@ function boot(data) {
       .querySelector(".grid-btn")
       .setAttribute("aria-pressed", String(on && gridPinned));
   }
+  // the first section opened shows its grid for a beat — a reveal, not a setting
   function flashGrid(detail) {
-    showGrid(detail, gridPinned);
+    if (gridPinned || gridFlashed || reduced) {
+      showGrid(detail, gridPinned);
+      return;
+    }
+    gridFlashed = true;
+    showGrid(detail, true);
+    gridTimer = setTimeout(() => detail.classList.remove("show-grid"), 1500);
   }
+  // Stats count up as they arrive. Each figure's width is locked to its final value
+  // first, so the unit beside it never shifts while the digits run.
+  const easeOut = bezier(0.16, 1, 0.3, 1);
+  function countUp(detail) {
+    if (reduced) return;
+    detail.querySelectorAll(".stats .num").forEach((el) => {
+      const final = el.dataset.v ?? (el.dataset.v = el.textContent);
+      if (!/^\d+(\.\d+)?$/.test(final)) return;
+      const target = parseFloat(final);
+      const dec = (final.split(".")[1] || "").length;
+      cancelAnimationFrame(el._raf);
+      el.style.minWidth = `${el.offsetWidth}px`;
+      el.textContent = (0).toFixed(dec);
+      const t0 = performance.now() + 260; // lands with the stats row's own reveal
+      const tick = (now) => {
+        const p = Math.max(0, Math.min(1, (now - t0) / 1100));
+        el.textContent = (target * easeOut(p)).toFixed(dec);
+        if (p < 1) el._raf = requestAnimationFrame(tick);
+        else {
+          el.textContent = final;
+          el.style.minWidth = "";
+        }
+      };
+      el._raf = requestAnimationFrame(tick);
+    });
+  }
+
   // the status bar names the grid the content actually uses at this width;
   // read=true measures during a read phase, the caller writes the label later
   function syncCols(detail, read) {
@@ -1007,6 +1395,7 @@ function boot(data) {
     b.detail.inert = false;
     current = to;
     tintName(null);
+    to.style.setProperty("--sdir", dir); // which edge leads: it carries the sheet's shadow
     stage.classList.add("is-switching");
     showGrid(a.detail, false);
 
@@ -1026,6 +1415,7 @@ function boot(data) {
       b.detail.classList.add("is-in");
       showGrid(b.detail, gridPinned);
       syncCols(b.detail);
+      countUp(b.detail);
     }, SWITCH.ms * 0.25);
 
     await inAnim.finished;
@@ -1106,6 +1496,7 @@ function boot(data) {
   if (cloud)
     (() => {
       const rand = seeded(11);
+      const sizes = [];
       const order = [
         ...TECH.filter((x) => x.tier === 1),
         ...TECH.filter((x) => x.tier === 2),
@@ -1114,10 +1505,18 @@ function boot(data) {
         '<div class="core" aria-hidden="true"><b>&lt;/&gt;</b></div>' +
         order
           .map((x, k) => {
-            const rz = ((rand() - 0.5) * 7).toFixed(1);
-            const ft = (3.8 + rand() * 2.4).toFixed(2),
-              fd = (-rand() * 5).toFixed(2);
-            return `<div class="tk t${x.tier}" style="--rz:${rz}deg;--ft:${ft}s;--fd:${fd}s;--k:${k}">
+            // each tile floats on its own: an ellipse of its own size, clock and
+            // direction, a sway on another clock, and a size a touch off its tier's
+            const rz = ((rand() - 0.5) * 9).toFixed(1);
+            const ft = (8 + rand() * 6).toFixed(2),
+              fd = (-rand() * 14).toFixed(2),
+              st = (4.2 + rand() * 3).toFixed(2),
+              ax = (2.5 + rand() * 3.5).toFixed(1),
+              ay = (3 + rand() * 3.5).toFixed(1),
+              sw = (0.8 + rand() * 1.6).toFixed(2),
+              dir = rand() < 0.5 ? "normal" : "reverse";
+            sizes[k] = x.tier === 1 ? 1 + rand() * 0.08 : 0.9 + rand() * 0.16;
+            return `<div class="tk t${x.tier}" style="--rz:${rz}deg;--ft:${ft}s;--fd:${fd}s;--st:${st}s;--ax:${ax}px;--ay:${ay}px;--sw:${sw}deg;--fdir:${dir};--sz:${sizes[k].toFixed(3)};--k:${k}">
       <button type="button" data-id="${x.id}" aria-expanded="false" aria-controls="take" aria-label="${esc(x.name)} — ${x.tier === 1 ? UI.dailyDriver : UI.whenFits}. ${esc(UI.showTake)}">${icon(x.id)}</button>
       <span class="nm" aria-hidden="true">${esc(x.name)}</span>
     </div>`;
@@ -1145,11 +1544,16 @@ function boot(data) {
         cloud.classList.toggle("is-grid", grid);
         if (grid) {
           const cols = w < 330 ? 4 : w < 440 ? 5 : 6;
-          const gap = 10,
-            pad = 4;
-          const cell = (w - pad * 2 - gap * (cols - 1)) / cols;
+          // the right pad (in the CSS too) leaves room for the corner tabs and shadows
+          const gap = 12, // = --gx
+            pad = 4 + 14;
+          const cell = (w - pad - gap * (cols - 1)) / cols;
           cloud.style.setProperty("--cols", cols);
           cloud.style.setProperty("--unit", `${(cell / 0.56).toFixed(1)}px`); // drives the corner-tab size
+          tiles.forEach((el) => {
+            el.style.setProperty("--ox", "0px"); // the grid only pops in place
+            el.style.setProperty("--oy", "0px");
+          });
           return;
         }
         const aspect = Math.max(0.6, Math.min(3, w / h));
@@ -1206,10 +1610,16 @@ function boot(data) {
           if (!best || r.unit > best.unit + 0.5) best = r;
         }
         const { picked, xs, ys, unit } = best;
+        // a wide box leaves the rows short of the height: let them breathe apart
+        // (up to 1.3×), so the cluster fills the section instead of banding across it
+        const spanY = Math.max(...ys) - Math.min(...ys);
+        const uy = spanY
+          ? Math.max(unit, Math.min(unit * 1.3, (h - 44 - unit) / spanY))
+          : unit;
         // daily drivers take the cells nearest the core
         const inner = picked.slice(1).sort((a, b) => a.d - b.d);
         const ox = w / 2 - ((Math.max(...xs) + Math.min(...xs)) / 2) * unit;
-        const oy = h / 2 - ((Math.max(...ys) + Math.min(...ys)) / 2) * unit;
+        const oy = h / 2 - ((Math.max(...ys) + Math.min(...ys)) / 2) * uy;
         cloud.style.setProperty("--unit", `${Math.round(unit)}px`);
         // the hover labels centre on their tile: a whole-pixel width keeps them crisp.
         // Reset all widths, then read them all, then write them all — one layout pass
@@ -1222,10 +1632,56 @@ function boot(data) {
         nms.forEach((nm, i) => {
           nm.style.width = nmW[i];
         });
-        core.style.translate = `${Math.round(ox + picked[0].x * unit)}px ${Math.round(oy + picked[0].y * unit)}px`;
+        const cx = Math.round(ox + picked[0].x * unit),
+          cy = Math.round(oy + picked[0].y * uy);
+        core.style.translate = `${cx}px ${cy}px`;
+        // Scatter: every tile is nudged off its lattice point (seeded, so a resize
+        // never reshuffles), then any pair that got too close is relaxed apart —
+        // the rows dissolve into a loose spread while the spacing stays even.
+        const jr = seeded(29);
+        const pts = tiles.map((el, k) => ({
+          x: ox + inner[k].x * unit + (jr() - 0.5) * 0.36 * unit,
+          y: oy + inner[k].y * uy + (jr() - 0.5) * 0.3 * uy,
+          s: unit * (order[k].tier === 1 ? 0.7 : 0.56) * sizes[k],
+        }));
+        const all = [{ x: cx, y: cy, s: unit * 0.62, fixed: true }, ...pts];
+        const clear = unit * 0.2; // room for the float, the shadow and the corner tab
+        for (let it = 0; it < 12; it++) {
+          for (let i = 0; i < all.length; i++)
+            for (let j = i + 1; j < all.length; j++) {
+              const a = all[i],
+                b = all[j];
+              const need = (a.s + b.s) / 2 + clear;
+              const dx = b.x - a.x,
+                dy = b.y - a.y;
+              const ovx = need - Math.abs(dx),
+                ovy = need - Math.abs(dy);
+              if (ovx <= 0 || ovy <= 0) continue;
+              // squares: part along the axis that needs the smaller move
+              const alongX = ovx < ovy;
+              const d = (alongX ? ovx : ovy) * (a.fixed || b.fixed ? 1 : 0.5);
+              const sx = alongX ? Math.sign(dx) || 1 : 0,
+                sy = alongX ? 0 : Math.sign(dy) || 1;
+              if (!a.fixed) {
+                a.x -= sx * d;
+                a.y -= sy * d;
+              }
+              if (!b.fixed) {
+                b.x += sx * d;
+                b.y += sy * d;
+              }
+            }
+          for (const p of pts) {
+            const m = p.s / 2 + 12;
+            p.x = Math.min(w - m - 6, Math.max(m, p.x));
+            p.y = Math.min(h - m - 10, Math.max(m, p.y));
+          }
+        }
         tiles.forEach((el, k) => {
-          const c = inner[k];
-          el.style.translate = `${Math.round(ox + c.x * unit)}px ${Math.round(oy + c.y * unit)}px`;
+          const p = { x: Math.round(pts[k].x), y: Math.round(pts[k].y) };
+          el.style.translate = `${p.x}px ${p.y}px`;
+          el.style.setProperty("--ox", `${cx - p.x}px`); // the way back to the core
+          el.style.setProperty("--oy", `${cy - p.y}px`);
         });
       }
       new ResizeObserver(layout).observe(cloud);
@@ -1317,40 +1773,6 @@ function boot(data) {
   }
 
   /* ──────────────────────────────────────────────────────────────
-     Name — the extrude is cast away from the pointer, like a light source
-     ────────────────────────────────────────────────────────────── */
-  {
-    let raf = 0,
-      px = 0,
-      py = 0,
-      lx = "",
-      ly = "";
-    const cast = () => {
-      raf = 0;
-      const r = nameEl.getBoundingClientRect();
-      const dx = r.left + r.width / 2 - px,
-        dy = r.top + r.height / 2 - py;
-      const d = Math.hypot(dx, dy) || 1;
-      // the stack always falls down-right; the pointer only swings it within that quadrant
-      const clamp = (v) => Math.min(1, Math.max(0.3, v));
-      const vx = clamp(0.65 + (dx / d) * 0.45).toFixed(2),
-        vy = clamp(0.8 + (dy / d) * 0.35).toFixed(2);
-      if (vx !== lx) nameEl.style.setProperty("--vx", (lx = vx));
-      if (vy !== ly) nameEl.style.setProperty("--vy", (ly = vy));
-    };
-    if (!reduced)
-      addEventListener(
-        "pointermove",
-        (e) => {
-          px = e.clientX;
-          py = e.clientY;
-          if (!raf) raf = requestAnimationFrame(cast);
-        },
-        { passive: true },
-      );
-  }
-
-  /* ──────────────────────────────────────────────────────────────
      Info scene — the face watches the pointer while you're on the grid
      ────────────────────────────────────────────────────────────── */
   {
@@ -1380,6 +1802,55 @@ function boot(data) {
         eyes.style.setProperty("--ex", "0");
         eyes.style.setProperty("--ey", "0");
       });
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     Scenes — depth: while the pointer is on the grid every glyph leans
+     toward it and its stickers slide the other way (CSS does the easing)
+     ────────────────────────────────────────────────────────────── */
+  {
+    const scenes = panels
+      .map((p) => [p.dataset.q, p.querySelector(".scene")])
+      .filter(([, s]) => s);
+    let raf = 0,
+      px = 0,
+      py = 0,
+      box = null;
+    const lean = () => {
+      raf = 0;
+      if (!box) return;
+      for (const [q, s] of scenes) {
+        // each scene measures from its own quadrant's centre
+        const cx = box.left + box.width * (q[1] === "l" ? 0.25 : 0.75),
+          cy = box.top + box.height * (q[0] === "t" ? 0.25 : 0.75);
+        const nx = Math.max(-1, Math.min(1, (px - cx) / (box.width / 2))),
+          ny = Math.max(-1, Math.min(1, (py - cy) / (box.height / 2)));
+        s.style.setProperty("--mx", nx.toFixed(3));
+        s.style.setProperty("--my", ny.toFixed(3));
+      }
+    };
+    const rest = () => {
+      box = null;
+      for (const [, s] of scenes) {
+        s.style.setProperty("--mx", "0");
+        s.style.setProperty("--my", "0");
+      }
+    };
+    if (!reduced && scenes.length) {
+      stage.addEventListener(
+        "pointermove",
+        (e) => {
+          if (state !== "idle" || e.pointerType !== "mouse") return;
+          if (!box) box = stage.getBoundingClientRect();
+          px = e.clientX;
+          py = e.clientY;
+          if (!raf) raf = requestAnimationFrame(lean);
+        },
+        { passive: true },
+      );
+      stage.addEventListener("pointerleave", rest);
+      addEventListener("resize", () => (box = null));
     }
   }
 
@@ -1503,21 +1974,140 @@ function boot(data) {
    ────────────────────────────────────────────────────────────── */
 const bootEl = document.getElementById("boot");
 const bootLog = bootEl?.querySelector("[data-boot-log]");
+const bootPct = bootEl?.querySelector("[data-boot-pct]");
 const bootStart = performance.now();
-// hold it long enough to read, but not a beat longer for reduced-motion users
-const BOOT_MIN = matchMedia("(prefers-reduced-motion: reduce)").matches
-  ? 350
-  : 1150;
+// Hold it long enough to read — once. A second visit in the same session runs
+// the same log, faster; reduced-motion users never wait a beat longer.
+let bootSeen = false;
+try {
+  bootSeen = sessionStorage.getItem("booted") === "1";
+  sessionStorage.setItem("booted", "1");
+} catch {}
+const BOOT_MIN = reduced ? 300 : bootSeen ? 1500 : 2800;
+// steps land no faster than this, so the log reads as a sequence even when
+// everything is already cached
+const STEP_GAP = reduced ? 0 : bootSeen ? 260 : 480;
 let bootDone = false;
+
+// Progress: each real milestone (data, render, paint, fonts) ticks its log line
+// with the time it actually took, fills its bar segment and brings its section's
+// tile online; the counter eases toward 25% a step.
+const bootSteps = bootEl ? [...bootEl.querySelectorAll(".boot-steps li")] : [];
+const bootTiles = bootEl ? [...bootEl.querySelectorAll(".boot-q")] : [];
+const bootSegs = bootEl ? [...bootEl.querySelectorAll(".boot-bar i")] : [];
+bootSegs[0]?.classList.add("is-active");
+let lit = 0,
+  pctNow = 0,
+  pctRaf = 0,
+  stepFrom = 0, // navigation start: the first step reports when data.js was in
+  nextAt = bootStart + (reduced ? 0 : bootSeen ? 450 : 800), // all four tiles have landed
+  bootQueue = Promise.resolve();
+function bootCount() {
+  pctRaf = 0;
+  const target = lit * 25;
+  pctNow = Math.min(target, pctNow + Math.max(1, Math.ceil((target - pctNow) * 0.2)));
+  if (bootPct) bootPct.textContent = String(pctNow).padStart(3, "0");
+  if (pctNow < target) pctRaf = requestAnimationFrame(bootCount);
+}
+function bootStep(i) {
+  const at = performance.now(); // when the work really finished
+  bootQueue = bootQueue.then(
+    () =>
+      new Promise((done) =>
+        setTimeout(
+          () => {
+            const li = bootSteps[i];
+            if (li) {
+              li.classList.remove("is-active");
+              li.classList.add("is-done");
+              li.querySelector("b").textContent = `${Math.max(1, Math.round(at - stepFrom))}ms`;
+            }
+            stepFrom = at;
+            bootSteps[i + 1]?.classList.add("is-active");
+            bootTiles[i]?.classList.add("is-on");
+            bootSegs[i]?.classList.replace("is-active", "is-on");
+            bootSegs[i + 1]?.classList.add("is-active");
+            lit = i + 1;
+            if (!pctRaf) pctRaf = requestAnimationFrame(bootCount);
+            nextAt = performance.now() + STEP_GAP;
+            done();
+          },
+          Math.max(0, nextAt - performance.now()),
+        ),
+      ),
+  );
+  return bootQueue;
+}
+
+// The hand-off: each tile grows into the quadrant it stands for. Real geometry,
+// not a scale — the outline never thickens and the texture never stretches —
+// and on the way the CSS strips its sticker edge and lowers the panel's veil
+// over it, so it lands as exactly the ground of that quadrant.
+function handoff() {
+  const wins = [...document.querySelectorAll("#stage .panel .win")];
+  if (reduced || !bootTiles.length || bootTiles.length !== wins.length) return null;
+  const from = bootTiles.map((t) => t.getBoundingClientRect());
+  const to = wins.map((w) => w.getBoundingClientRect()); // measurable while hidden
+  bootEl.classList.add("is-handoff");
+  const box = (r) => ({
+    left: `${r.left}px`,
+    top: `${r.top}px`,
+    width: `${r.width}px`,
+    height: `${r.height}px`,
+  });
+  return bootTiles.map((t, i) => {
+    Object.assign(t.style, { position: "fixed", margin: "0", ...box(from[i]) });
+    return t.animate([box(from[i]), box(to[i])], {
+      duration: 980,
+      delay: i * 50,
+      easing: "cubic-bezier(.7,0,.16,1)",
+      fill: "forwards",
+    });
+  });
+}
+
+// The stage is revealed under the landed tiles; its scenes and type set in.
+function stageIn() {
+  if (document.body.classList.contains("is-staged")) return;
+  document.body.classList.add("is-staged");
+  const stage = document.getElementById("stage");
+  stage.classList.add("is-arriving");
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => stage.classList.remove("is-preintro")),
+  );
+  setTimeout(() => stage.classList.remove("is-arriving"), 1900);
+}
 
 function finishBoot() {
   if (bootDone) return;
   bootDone = true;
   if (bootLog) bootLog.textContent = UI.ready || "ready";
   document.body.classList.add("is-ready"); // releases the name's intro
-  if (!bootEl) return;
-  bootEl.classList.add("is-done");
+  if (!bootEl) return stageIn();
   const gone = () => bootEl.remove();
+  const flights = handoff();
+  if (flights) {
+    const land = () => {
+      stageIn();
+      // colour for colour over the stage now: dissolve onto it
+      const fades = bootTiles.map((t) =>
+        t.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: 520,
+          easing: "cubic-bezier(.3,0,.2,1)",
+          fill: "forwards",
+        }),
+      );
+      Promise.all(fades.map((f) => f.finished)).then(gone, gone);
+    };
+    Promise.all(flights.map((f) => f.finished)).then(land, land);
+    setTimeout(() => {
+      stageIn();
+      gone();
+    }, 3000); // safety
+    return;
+  }
+  stageIn();
+  bootEl.classList.add("is-done");
   bootEl.addEventListener("transitionend", (e) => {
     if (e.target === bootEl && e.propertyName === "opacity") gone();
   });
@@ -1536,6 +2126,10 @@ async function start() {
   applyMeta(data.site?.meta);
   UI = { ...UI_DEFAULTS, ...(data.site?.ui || {}) };
   if (bootLog) bootLog.textContent = UI.loading || "loading";
+  const bootPath = bootEl?.querySelector("[data-boot-path]");
+  if (bootPath && data.site?.name)
+    bootPath.textContent = `~/${data.site.name.trim().toLowerCase().replace(/\s+/g, "-")}`;
+  bootStep(0); // data.js is in
   document.querySelector(".name").textContent = data.site?.name || "";
   stage.innerHTML =
     data.panels.map(renderPanel).join("") +
@@ -1547,6 +2141,7 @@ async function start() {
     if (s) el.textContent = s;
   });
   boot(data);
+  bootStep(1); // rendered
 
   // Hand off only after the render is painted and the webfonts have settled,
   // but keep a ceiling so a slow/blocked font request can't hold the screen.
@@ -1560,7 +2155,13 @@ async function start() {
   const shown = new Promise((r) =>
     setTimeout(r, Math.max(0, BOOT_MIN - (performance.now() - bootStart))),
   );
-  await Promise.all([painted, fonts, shown]);
+  await painted;
+  bootStep(2);
+  await fonts;
+  await bootStep(3);
+  await shown;
+  // a beat with all four online, then hand off
+  await new Promise((r) => setTimeout(r, reduced ? 0 : bootSeen ? 350 : 650));
   requestAnimationFrame(finishBoot);
 }
 
