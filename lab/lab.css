@@ -6,7 +6,7 @@
    ────────────────────────────────────────────────────────────── */
 
 /* the pixel name steps aside for every lab header */
-.lab-h-a .name, .lab-h-b .name, .lab-h-c .name { display: none; }
+.lab-h-a .name, .lab-h-b .name, .lab-h-c .name, .lab-h-d .name { display: none; }
 .lab-h-a .masthead, .lab-h-c .masthead { text-align: left; line-height: normal; }
 
 /* ── A / C — the window title ── */
@@ -239,3 +239,18 @@ body.is-ready .lab-margin { opacity: 1; }
 .lab-bg5 .panel:not(.is-front) .win {
   box-shadow: 0 0 0 1px rgba(134, 16, 36, .05), 10px 10px 0 rgba(134, 16, 36, .055);
 }
+
+/* ── D — centred: the name, its marker and the four-cell caret, nothing else ── */
+.lab-h-d .masthead { line-height: normal; }
+.lh--center { justify-content: center; padding: round(clamp(4px, 1vh, 12px), 1px) 0 round(clamp(8px, 1.4vh, 16px), 1px); }
+.lh--center::after { content: none; }
+/* the caret hangs off the right end: shift by half of it so the name itself is centred */
+.lh--center .lh-name { margin-left: calc(var(--fs) * .6); }
+.lh--center .lh-ink::before { height: .28em; bottom: .04em; }
+
+/* candidate faces */
+[data-f="mono"]      .lh-name { font-family: "JetBrains Mono", monospace; font-weight: 600; --fs: round(clamp(2.4rem, 6vw, 5.6rem), 1px); letter-spacing: -.045em; line-height: 1; }
+[data-f="inter"]     .lh-name { font-family: "Inter Tight", sans-serif; font-weight: 700; --fs: round(clamp(2.6rem, 7vw, 6.6rem), 1px); letter-spacing: -.045em; line-height: 1; }
+[data-f="isans"]     .lh-name { font-family: "Instrument Sans", sans-serif; font-weight: 600; --fs: round(clamp(2.6rem, 7vw, 6.6rem), 1px); letter-spacing: -.04em; line-height: 1; }
+[data-f="spacemono"] .lh-name { font-family: "Space Mono", monospace; font-weight: 700; --fs: round(clamp(2.4rem, 5.6vw, 5.2rem), 1px); letter-spacing: -.05em; line-height: 1; }
+[data-f="bricolage"] .lh-name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-variation-settings: "opsz" 96; --fs: round(clamp(2.6rem, 7vw, 6.6rem), 1px); letter-spacing: -.035em; line-height: 1; }

@@ -29,7 +29,19 @@
       .map((c) => (c === " " ? '<span class="lh-sp"></span>' : `<span class="lh-l" style="--i:${i++}">${c}</span>`))
       .join("");
   };
-  if (H === "a" || H === "c") {
+  if (H === "d") {
+    // the families under test, loaded on top of the site's own
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=Space+Mono:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@600;700&family=Inter+Tight:wght@600;700&display=swap">',
+    );
+    root.dataset.f = (q.get("f") || "mono").toLowerCase();
+    mast.insertAdjacentHTML(
+      "beforeend",
+      `<div class="lh lh--center"><p class="lh-name"><span class="lh-ink">${letters(site.name || "")}</span><span class="lh-px" aria-hidden="true">${["info", "projects", "tech", "contact"].map((k) => `<i data-k="${k}"></i>`).join("")}</span></p></div>`,
+    );
+    head = mast.querySelector(".lh");
+  } else if (H === "a" || H === "c") {
     const caret =
       H === "c"
         ? `<span class="lh-px" aria-hidden="true">${["info", "projects", "tech", "contact"].map((k) => `<i data-k="${k}"></i>`).join("")}</span>`
