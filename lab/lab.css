@@ -1,0 +1,241 @@
+/* ──────────────────────────────────────────────────────────────
+   Masthead lab — prototypes only, loaded by lab.html.
+   ?h=now|a|b|c      header variant (default c)
+   ?bg=12345 | 0     desk layers: 1 grain · 2 crop marks · 3 pointer
+                     light · 4 marginalia · 5 contact shadow (default 1235)
+   ────────────────────────────────────────────────────────────── */
+
+/* the pixel name steps aside for every lab header */
+.lab-h-a .name, .lab-h-b .name, .lab-h-c .name { display: none; }
+.lab-h-a .masthead, .lab-h-c .masthead { text-align: left; line-height: normal; }
+
+/* ── A / C — the window title ── */
+.lh {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: round(clamp(10px, 1.6vh, 16px), 1px);
+}
+/* a hairline that the stage hangs from: drawn in from the left once the name is in */
+.lh::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--c18);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.8s var(--ease) .5s;
+}
+body.is-ready .lh::after { transform: none; }
+
+.lh-name {
+  --fs: round(clamp(2.6rem, 6.2vw, 6rem), 1px);
+  display: inline-flex;
+  align-items: baseline;
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: var(--fs);
+  line-height: .86;
+  letter-spacing: -.02em;
+  color: var(--cherry);
+  /* leans toward the pointer, the way the scenes' glyphs do */
+  translate: calc(var(--mx, 0) * 4px) calc(var(--my, 0) * 2px);
+  transition: translate 1.6s var(--ease);
+}
+.lh-ink { position: relative; isolation: isolate; white-space: nowrap; }
+/* the marker: the Contact address's highlight, swept under the name in the
+   hovered (or open) section's accent */
+.lh-ink::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -.03em;
+  right: -.03em;
+  bottom: .02em;
+  height: .3em;
+  background: var(--lk, var(--acc-info));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1.4s var(--ease), background-color .6s linear;
+}
+.lh.is-lit .lh-ink::before { transform: scaleX(1); }
+
+/* letters set in like the corner type: rise 14px, 45ms apart */
+.lh-l {
+  display: inline-block;
+  opacity: 0;
+  translate: 0 .16em;
+  transition: opacity .8s var(--ease-soft), translate 1.1s var(--ease);
+  transition-delay: calc(var(--i) * 45ms + 150ms);
+}
+.lh-sp { display: inline-block; width: .24em; }
+body.is-ready .lh-l { opacity: 1; translate: 0 0; }
+
+/* A: the site's caret, after the name */
+.lh-caret {
+  display: inline-block;
+  width: .4em;
+  height: .12em;
+  margin-left: .1em;
+  border: max(1.5px, calc(var(--fs) * .018)) solid var(--cherry);
+  background: var(--lk, #e3cfae);
+  box-shadow: 2px 2px 0 var(--cherry);
+  opacity: 0;
+  transition: opacity .4s linear 1s, background-color .6s linear;
+}
+body.is-ready .lh-caret { opacity: 1; animation: caret-blink 1.1s steps(1) 1.4s infinite; }
+.lh.is-open .lh-caret { animation: none; }
+
+/* C: the caret, cut into four cells like the boot screen's bar — one per
+   section; the hovered (or open) section's own cell takes its accent */
+.lh-px {
+  display: inline-flex;
+  width: .5em;
+  height: .13em;
+  margin-left: .1em;
+  border: max(1.5px, calc(var(--fs) * .018)) solid var(--cherry);
+  background: var(--cream);
+  box-shadow: 2px 2px 0 var(--cherry);
+  opacity: 0;
+  transition: opacity .4s linear 1s;
+}
+.lh-px i { flex: 1; transition: background-color .6s linear; }
+.lh-px i + i { border-left: 1px solid var(--c30); }
+.lh-px i[data-k="info"]     { --c: var(--acc-info); }
+.lh-px i[data-k="projects"] { --c: var(--acc-projects); }
+.lh-px i[data-k="tech"]     { --c: var(--acc-tech); }
+.lh-px i[data-k="contact"]  { --c: var(--acc-contact); }
+.lh-px i.is-on { background: var(--c); }
+body.is-ready .lh-px { opacity: 1; animation: caret-blink 1.1s steps(1) 1.4s infinite; }
+.lh.is-lit .lh-px { animation: none; }
+
+/* the right side: a mono status line; the path follows the open section */
+.lh-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 0;
+  padding-bottom: .35em;
+  font-family: var(--mono);
+  font-size: var(--m-m);
+  letter-spacing: .04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.lh-meta > span {
+  opacity: 0;
+  translate: 0 8px;
+  transition: opacity .8s var(--ease-soft), translate 1.1s var(--ease);
+  transition-delay: calc(var(--i) * 70ms + 600ms);
+}
+.lh-meta > span + span::before { content: "·"; margin: 0 .7em; color: var(--c30); }
+body.is-ready .lh-meta > span { opacity: 1; translate: 0 0; }
+.lh-path { color: var(--cherry); }
+.lh-sub {
+  font-weight: 400;
+  background: linear-gradient(var(--lk, transparent), var(--lk, transparent)) 0 88% / 100% .45em no-repeat;
+  transition: background-size .6s var(--ease);
+}
+.lh-clock b { font-weight: 400; font-variant-numeric: tabular-nums; }
+
+/* ── B — the name as a sticker label ── */
+.lab-h-b .masthead { line-height: normal; padding: 4px 0 10px; }
+.lb {
+  display: inline-flex;
+  align-items: stretch;
+  border: var(--bw) solid var(--cherry);
+  background: var(--paper);
+  box-shadow: var(--sh-lg);
+  color: var(--cherry);
+  rotate: -1.2deg;
+  opacity: 0;
+  transform: translate(0, -14px) rotate(-3deg);
+  transition: opacity .7s var(--ease-soft) .2s, transform 1.2s var(--ease) .2s;
+}
+body.is-ready .lb { opacity: 1; transform: none; }
+.lb.is-lit { transform: translate(-1px, -1px); transition-delay: 0s; transition-duration: .7s, .35s; }
+.lb-sym {
+  display: grid;
+  place-items: center;
+  min-width: 1.9em;
+  padding: 0 .4em;
+  border-right: var(--bw) solid var(--cherry);
+  background: var(--lk, var(--cream));
+  font-family: var(--mono);
+  font-size: round(clamp(1.1rem, 1.9vw, 1.6rem), 1px);
+  font-weight: 500;
+  transition: background-color .5s linear;
+}
+.lb-sym span { transition: opacity .25s linear; }
+.lb-sym.is-swap span { opacity: 0; }
+.lb-name {
+  padding: .14em .32em .02em;
+  font-family: var(--serif);
+  font-size: round(clamp(2.4rem, 5.2vw, 4.9rem), 1px);
+  line-height: 1;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+}
+.lb-role {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 16px;
+  border-left: 1px dashed var(--c30);
+  font-family: var(--mono);
+  font-size: var(--m-s);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── desk ── */
+/* 1 — the sheets' own grain, on the desk too, fainter */
+.lab-bg1 body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url("../assets/grain.png") .5px .5px / 256px 256px;
+  background-image: image-set(url("../assets/grain.avif") type("image/avif"), url("../assets/grain.png") type("image/png"));
+  opacity: .34;
+  pointer-events: none;
+}
+/* 2 / 3 — the marks are drawn on a canvas under everything */
+.lab-desk { position: fixed; inset: 0; z-index: -2; pointer-events: none; }
+.lab-canvas body { background: var(--desk); }
+
+/* 4 — marginalia in the bottom margin */
+.lab-margin {
+  position: fixed;
+  left: var(--edge);
+  right: var(--edge);
+  bottom: 0;
+  height: var(--edge);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  color: var(--c55);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.2s var(--ease-soft) 1.2s;
+}
+body.is-ready .lab-margin { opacity: 1; }
+.lab-margin b { font-weight: 400; color: var(--cherry); }
+
+/* 5 — the sheets sit on the desk: a faint contact edge and offset */
+.lab-bg5 .panel:not(.is-front) .win {
+  box-shadow: 0 0 0 1px rgba(134, 16, 36, .05), 10px 10px 0 rgba(134, 16, 36, .055);
+}
