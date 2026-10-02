@@ -2087,6 +2087,40 @@ function handoff() {
   });
 }
 
+// The second flight: the tiles don't dissolve, they become the masthead's mark.
+// Each one shrinks from its quadrant to the spot of its cell in the caret —
+// measured from layout, so the mark's tilt is counted — and when they land the
+// real mark takes over. Returns null where there's nothing to fly to.
+function toMark() {
+  const mark = document.querySelector(".name .mark");
+  const plate = mark?.parentElement;
+  const cells = mark ? [...mark.children] : [];
+  if (reduced || !plate || cells.length !== bootTiles.length) return null;
+  const pr = plate.getBoundingClientRect();
+  const ang = parseFloat(getComputedStyle(mark).rotate) || 0; // the tilt it will rest at, in degrees
+  const rad = (ang * Math.PI) / 180;
+  // the mark turns about 50% 80% of itself
+  const ox = pr.left + mark.offsetLeft + mark.offsetWidth * 0.5;
+  const oy = pr.top + mark.offsetTop + mark.offsetHeight * 0.8;
+  const box = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  return bootTiles.map((t, i) => {
+    const c = cells[i];
+    const w = c.offsetWidth,
+      h = c.offsetHeight;
+    const dx = pr.left + mark.offsetLeft + c.offsetLeft + w / 2 - ox;
+    const dy = pr.top + mark.offsetTop + c.offsetTop + h / 2 - oy;
+    const cx = ox + dx * Math.cos(rad) - dy * Math.sin(rad);
+    const cy = oy + dx * Math.sin(rad) + dy * Math.cos(rad);
+    return t.animate(
+      [
+        { ...box(t.getBoundingClientRect()), transform: "none" },
+        { ...box({ left: cx - w / 2, top: cy - h / 2, width: w, height: h }), transform: `rotate(${ang}deg)` },
+      ],
+      { duration: 1050, delay: 260 + i * 70, easing: "cubic-bezier(.7,0,.16,1)", fill: "forwards" }, // a beat on the quadrants first
+    );
+  });
+}
+
 // The stage is revealed under the landed tiles; its scenes and type set in.
 function stageIn() {
   if (document.body.classList.contains("is-staged")) return;
@@ -2108,29 +2142,45 @@ function finishBoot() {
   bootDone = true;
   if (bootLog) bootLog.textContent = UI.ready || "ready";
   document.body.classList.add("is-ready"); // releases the name's intro
-  if (!bootEl) return stageIn();
+  if (!bootEl) {
+    document.body.classList.add("is-marked");
+    return stageIn();
+  }
   const gone = () => bootEl.remove();
+  // the real mark takes over from the tiles that became it
+  const settle = () => {
+    document.body.classList.add("is-marked", "is-swap");
+    setTimeout(() => document.body.classList.remove("is-swap"), 500);
+    const fades = bootTiles.map((t) =>
+      t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "linear", fill: "forwards" }),
+    );
+    Promise.all(fades.map((f) => f.finished)).then(gone, gone);
+  };
   const flights = handoff();
   if (flights) {
     const land = () => {
-      stageIn();
-      // colour for colour over the stage now: dissolve onto it
-      const fades = bootTiles.map((t) =>
-        t.animate([{ opacity: 1 }, { opacity: 0 }], {
-          duration: 520,
-          easing: "cubic-bezier(.3,0,.2,1)",
-          fill: "forwards",
-        }),
-      );
-      Promise.all(fades.map((f) => f.finished)).then(gone, gone);
+      stageIn(); // the content comes up as the tiles leave their quadrants
+      const home = toMark();
+      if (!home) {
+        // nowhere to fly to: dissolve onto the stage, colour for colour
+        document.body.classList.add("is-marked");
+        const fades = bootTiles.map((t) =>
+          t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, easing: "cubic-bezier(.3,0,.2,1)", fill: "forwards" }),
+        );
+        Promise.all(fades.map((f) => f.finished)).then(gone, gone);
+        return;
+      }
+      Promise.all(home.map((f) => f.finished)).then(settle, settle);
     };
     Promise.all(flights.map((f) => f.finished)).then(land, land);
     setTimeout(() => {
       stageIn();
+      document.body.classList.add("is-marked");
       gone();
-    }, 3000); // safety
+    }, 4800); // safety
     return;
   }
+  document.body.classList.add("is-marked");
   stageIn();
   bootEl.classList.add("is-done");
   bootEl.addEventListener("transitionend", (e) => {
