@@ -61,7 +61,6 @@ window.DATA = {
         "bubble": "hi!"
       },
       "face": {
-        "index": "01 — Profile",
         "title": "Info",
         "teaser": "Front-end developer, shipping interfaces from Lisbon since 2016.",
         "label": "Open Info"
@@ -372,7 +371,6 @@ window.DATA = {
         ]
       },
       "face": {
-        "index": "02 — Selected Work",
         "title": "Projects",
         "teaser": "Products, systems and open‑source tools, 2022–2025.",
         "label": "Open Projects"
@@ -886,7 +884,6 @@ window.DATA = {
         ]
       },
       "face": {
-        "index": "03 — Stack",
         "title": "Techstack",
         "teaser": "Languages, frameworks and tooling I ship with.",
         "label": "Open Techstack"
@@ -917,7 +914,6 @@ window.DATA = {
         "receipt": "✓✓ seen"
       },
       "face": {
-        "index": "04 — Contact",
         "title": "Contact",
         "teaser": "Taking on contract work from January 2027.",
         "label": "Open Contact"

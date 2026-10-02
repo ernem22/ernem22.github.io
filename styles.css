@@ -93,8 +93,7 @@ button { font: inherit; color: inherit; }
 /* ──────────────────────────────────────────────────────────────
    Masthead
    The name in Orbitron, extruded in the four section colours with a cherry
-   base under them, the stack cast away from the pointer like a light
-   source; hovering or opening a section floods every layer with its colour.
+   base under them, the stack falling down and to the right; hovering or opening a section floods every layer with its colour.
    The four-quadrant mark is the caret after it: each quadrant a section's
    own ground — gradient, a lit top edge, a shaded foot, the boot tile's
    glyph — the hovered (or open) one comes online and lifts. At rest the
@@ -108,8 +107,6 @@ button { font: inherit; color: inherit; }
   /* by width, and by height too: a phone on its side keeps its room for the stage */
   --fs: round(clamp(1.9rem, min(6.2vw, 12vh), 5.6rem), 1px);
   --lw: max(2px, calc(var(--fs) * .03));
-  --vx: .7;
-  --vy: .7;
   --n1: var(--k, var(--acc-info));
   --n2: var(--k, var(--acc-projects));
   --n3: var(--k, var(--acc-tech));
@@ -127,17 +124,16 @@ button { font: inherit; color: inherit; }
   color: var(--cherry);
   /* four colour bands (one per section) and a cherry base under them */
   text-shadow:
-    calc(var(--vx) * .035em) calc(var(--vy) * .035em) 0 var(--n1),
-    calc(var(--vx) * .07em)  calc(var(--vy) * .07em)  0 var(--n2),
-    calc(var(--vx) * .105em) calc(var(--vy) * .105em) 0 var(--n3),
-    calc(var(--vx) * .14em)  calc(var(--vy) * .14em)  0 var(--n4),
-    calc(var(--vx) * .165em) calc(var(--vy) * .165em) 0 var(--cherry);
-  /* leans toward the pointer, the way the scenes' glyphs do */
-  translate: calc(var(--mx, 0) * 4px) calc(var(--my, 0) * 2px);
+    .0245em .0245em 0 var(--n1),
+    .049em  .049em  0 var(--n2),
+    .0735em .0735em 0 var(--n3),
+    .098em  .098em  0 var(--n4),
+    .1155em .1155em 0 var(--cherry);
   /* steps back while a section is open: transform only, on the sheet's own
      timing (--nt, set by JS for opening / closing) */
   transform-origin: 50% 0;
-  transition: translate 1.6s var(--ease), scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1)), text-shadow .5s linear;
+  transition: scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1)), text-shadow .5s linear;
+  contain: layout style;
 }
 .name.is-small { scale: var(--name-k, .5); }
 .name .sr {
@@ -195,14 +191,14 @@ body.is-ready .name .l { opacity: 1; translate: 0 0; }
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  mix-blend-mode: multiply;
-  opacity: .5;
+  opacity: .32;
   background: url("assets/grain.png") 0 0 / 128px 128px;
   background-image: image-set(url("assets/grain.avif") type("image/avif"), url("assets/grain.png") type("image/png"));
 }
 /* the mark waits for the boot tiles: they fly in and become it (body.is-marked) */
 body.is-marked .name .mark { opacity: 1; scale: 1; transition-delay: 760ms; }
-body.is-swap .name .mark { transition: opacity .3s linear; }   /* the flight did the arriving: just take over */
+body.is-swap .name .mark { transition: opacity .3s linear; animation: mark-land .55s var(--ease) both; }   /* the flight did the arriving: take over with a settle */
+@keyframes mark-land { 0% { scale: 1.14; } 100% { scale: 1; } }
 body.is-marked .name.is-lit .mark { rotate: 3deg; transition-delay: 0s; }
 .name .mark i {
   position: relative;
@@ -360,18 +356,10 @@ body.is-ready .name:not(.is-lit) .mark i b {
 }
 .scene > * { position: absolute; }
 .scene .bg { inset: 0; }
-/* depth: while the pointer is on the grid the glyph leans toward it and the
-   stickers slide the other way (--mx / --my ∈ [-1, 1], set per scene by JS) */
-.scene { --mx: 0; --my: 0; }
 .scene .glyph {
   left: var(--gx);
   top: var(--gy);
-  translate: calc(-50% + var(--mx) * 1.8cqmin) calc(-50% + var(--my) * 1.8cqmin);
-  transition: translate 1.6s var(--ease);
-}
-.scene .chip, .scene .ico, .scene .wire, .scene .plane, .scene .trail {
-  translate: calc(var(--mx) * -1.2cqmin) calc(var(--my) * -1.2cqmin);
-  transition: translate 1.9s var(--ease);
+  translate: -50% -50%;
 }
 .panel[data-q="tl"] .scene { --gx: 60%; --gy: 56%; }
 .panel[data-q="tr"] .scene { --gx: 40%; --gy: 56%; }
@@ -847,15 +835,6 @@ body:not(.is-staged) .stage { visibility: hidden; }
 .panel[data-q="tr"] .indicator,
 .panel[data-q="br"] .indicator { align-self: flex-start; flex-direction: row-reverse; }
 
-.idx {
-  font-family: var(--mono);
-  font-size: var(--m-m);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  transition: opacity 1.2s var(--ease-soft), color 1.2s var(--ease-soft);
-}
-
 .title {
   display: inline-block;
   margin: 0;
@@ -916,9 +895,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 .stage:not(.is-open) .panel:has(.face:focus-visible) .veil { opacity: .08; }
 .stage:not(.is-open) .panel:hover .face .title,
 .stage:not(.is-open) .panel:has(.face:focus-visible) .face .title { opacity: 1; }
-.stage:not(.is-open) .panel:hover .idx,
 .stage:not(.is-open) .panel:hover .teaser,
-.stage:not(.is-open) .panel:has(.face:focus-visible) .idx,
 .stage:not(.is-open) .panel:has(.face:focus-visible) .teaser { color: var(--cherry); }
 .stage:not(.is-open) .panel:hover .rule,
 .stage:not(.is-open) .panel:has(.face:focus-visible) .rule { transform: scaleX(1); opacity: 1; }
@@ -973,7 +950,6 @@ body:not(.is-staged) .stage { visibility: hidden; }
 /* the panel being read: its scene switches off in place; the panel opens as a plain surface */
 .panel.is-reading .art { opacity: 0; transition: opacity .22s cubic-bezier(.4, 0, 1, 1); }
 .panel.is-reading .canvas::after { opacity: 0; transition-duration: .3s; }
-.panel.is-reading .face .idx,
 .panel.is-reading .face .teaser,
 .panel.is-reading .face .rule { opacity: 0; transition-duration: .45s; }
 .panel.is-reading .indicator {
@@ -2161,7 +2137,6 @@ a.soon { cursor: default; }
   .d-nav { gap: 6px; }
   .d-nav button [aria-hidden] { font-size: var(--t-l); }
   .timeline li { grid-template-columns: 88px 1fr; }
-  .idx { font-size: var(--m-s); letter-spacing: .04em; }
 
   /* the project index becomes a wrapping grid of tabs — no sideways scroll,
      nothing clipped, no dropdown */
