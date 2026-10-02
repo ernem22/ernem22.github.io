@@ -108,8 +108,8 @@ button { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: baseline;
   margin: 0;
-  /* optical centre: the caret hangs off the right end — shift by half of it */
-  margin-left: calc(var(--fs) * .62);
+  /* optical centre: the caret hangs off the right end — a left margin as wide as the caret keeps the name itself centred */
+  margin-left: calc(max(1.1em, 56px) + .14em);
   font-family: var(--mono);
   font-weight: 600;
   font-size: var(--fs);
@@ -126,6 +126,14 @@ button { font: inherit; color: inherit; }
   transition: translate 1.6s var(--ease), scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1));
 }
 .name.is-small { scale: var(--name-k, .5); }
+/* phones: name and caret together must fit the width, so the group is centred
+   instead (no caret-wide margin) and the size follows the width */
+@media (max-width: 640px) {
+  .name {
+    --fs: round(clamp(2rem, min(11vw, 13vh), 3.6rem), 1px);
+    margin-left: 0;
+  }
+}
 .name .sr {
   position: absolute;
   width: 1px;
