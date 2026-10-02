@@ -102,7 +102,8 @@ button { font: inherit; color: inherit; }
   padding: round(clamp(4px, 1vh, 12px), 1px) 0 round(clamp(6px, 1vh, 12px), 1px);
 }
 .name {
-  --fs: round(clamp(2.2rem, 6vw, 5.6rem), 1px);
+  /* by width, and by height too: a phone on its side keeps its room for the stage */
+  --fs: round(clamp(2.2rem, min(6vw, 11vh), 5.6rem), 1px);
   position: relative;
   display: inline-flex;
   align-items: baseline;

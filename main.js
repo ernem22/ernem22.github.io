@@ -592,7 +592,11 @@ function mountDesk() {
       for (let kx = k0x; edge + kx * PITCH <= W + PITCH; kx++)
         dots.push({ x: edge + kx * PITCH, y: edge + ky * PITCH, a: kx % 4 === 0 && ky % 4 === 0 ? A_MAJOR : A });
     measureHole();
-    draw(performance.now());
+    invalidate();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    draw(performance.now(), true);
+    rest();
   }
   function measureHole() {
     const stage = document.getElementById("stage");
@@ -602,11 +606,13 @@ function mountDesk() {
   }
 
   const paths = Array.from({ length: BUCKETS }, () => null);
-  function draw(now) {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    for (let i = 0; i < BUCKETS; i++) paths[i] = new Path2D();
-
+  // Each frame first works out every visible dot, then paints only if something
+  // on screen differs from the resting grid (or just stopped differing): a wave
+  // crossing the hidden middle of the stage costs no painting at all. And only
+  // the desk that shows is cleared and painted, not the part under the sheets.
+  let wasMoved = true;
+  const todo = []; // [x, y, r, bucket] per visible dot, reused
+  function draw(now, force = false) {
     // the waves still running, with their current radius and strength
     const live = [];
     for (let i = waves.length - 1; i >= 0; i--) {
@@ -616,24 +622,27 @@ function mountDesk() {
         waves.splice(i, 1);
         continue;
       }
-      if (t < 0) continue;
       live.push({ x: w.x, y: w.y, r: (now - w.t0) * (WAVE_V / 1000), s: w.amp * (1 - t) * (1 - t) });
     }
     const near = ptr.k > 0.01;
 
+    let n = 0,
+      moved = false;
     for (const d of dots) {
       if (hole && d.x > hole.l && d.x < hole.r && d.y > hole.t && d.y < hole.b &&
         Math.abs(d.x - hole.cx) > 6 && Math.abs(d.y - hole.cy) > 6) continue; // under a sheet: never seen
       let a = d.a,
         r = R,
         ox = 0,
-        oy = 0;
+        oy = 0,
+        gs = 0;
       if (near) {
         const dx = d.x - ptr.x,
           dy = d.y - ptr.y,
           dist = Math.hypot(dx, dy);
         if (dist < NEAR) {
           const g = (1 - dist / NEAR) ** 2 * ptr.k;
+          gs += g;
           a += 0.32 * g;
           r += 0.55 * g;
           if (dist > 0.1) {
@@ -649,6 +658,7 @@ function mountDesk() {
           u = (dist - w.r) / WAVE_W;
         if (u < -2.5 || u > 2.5) continue;
         const g = Math.exp(-u * u) * w.s;
+        gs += g;
         a += 0.42 * g;
         r += 0.9 * g;
         if (dist > 0.1) {
@@ -656,16 +666,43 @@ function mountDesk() {
           oy += (dy / dist) * 3 * g;
         }
       }
-      const b = Math.min(BUCKETS - 1, Math.round(Math.min(1, a) * (BUCKETS - 1) / 0.75));
-      const x = d.x + ox,
-        y = d.y + oy;
-      paths[b].moveTo(x + r, y);
-      paths[b].arc(x, y, r, 0, Math.PI * 2);
+      if (gs > 0.004) moved = true;
+      const i = n++ * 4;
+      todo[i] = d.x + ox;
+      todo[i + 1] = d.y + oy;
+      todo[i + 2] = r;
+      todo[i + 3] = Math.min(BUCKETS - 1, Math.round((Math.min(1, a) * (BUCKETS - 1)) / 0.75));
     }
-    for (let i = 0; i < BUCKETS; i++) {
-      ctx.fillStyle = `rgba(${INK}, ${((i / (BUCKETS - 1)) * 0.75).toFixed(3)})`;
-      ctx.fill(paths[i]);
+
+    if (force || moved || wasMoved) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (hole) {
+        // the desk round the sheets, and the gutters between them (with room for
+        // a dot's swell and lean)
+        const p = 8,
+          l = hole.l + p,
+          t = hole.t + p,
+          rr = hole.r - p,
+          bb = hole.b - p;
+        ctx.clearRect(0, 0, W, t);
+        ctx.clearRect(0, bb, W, H - bb);
+        ctx.clearRect(0, t, l, bb - t);
+        ctx.clearRect(rr, t, W - rr, bb - t);
+        ctx.clearRect(hole.cx - 14, t, 28, bb - t);
+        ctx.clearRect(l, hole.cy - 14, rr - l, 28);
+      } else ctx.clearRect(0, 0, W, H);
+      for (let i = 0; i < BUCKETS; i++) paths[i] = new Path2D();
+      for (let i = 0; i < n * 4; i += 4) {
+        const path = paths[todo[i + 3]];
+        path.moveTo(todo[i] + todo[i + 2], todo[i + 1]);
+        path.arc(todo[i], todo[i + 1], todo[i + 2], 0, Math.PI * 2);
+      }
+      for (let i = 0; i < BUCKETS; i++) {
+        ctx.fillStyle = `rgba(${INK}, ${((i / (BUCKETS - 1)) * 0.75).toFixed(3)})`;
+        ctx.fill(paths[i]);
+      }
     }
+    wasMoved = moved;
     return live.length > 0;
   }
 
@@ -677,9 +714,61 @@ function mountDesk() {
     const waving = draw(now);
     const settling = Math.abs(ptr.tx - ptr.x) + Math.abs(ptr.ty - ptr.y) > 0.3 || Math.abs((ptr.on ? 1 : 0) - ptr.k) > 0.005;
     if (waving || settling) kick();
+    else rest();
   }
   function kick() {
-    if (!raf && !document.hidden) raf = requestAnimationFrame(frame);
+    if (raf || document.hidden) return;
+    show();
+    raf = requestAnimationFrame(frame);
+  }
+
+  // At rest the canvas steps aside: its resting grid is snapshotted once into the
+  // page's own background and the canvas is hidden, so a still desk is just a
+  // background image, not a full-screen layer composited on every frame (on a
+  // phone that layer alone cost the sheets' opening about half its smoothness).
+  // It comes back for as long as a wave or the pointer moves it.
+  let still = null, // the snapshot's object URL
+    stale = true, // the snapshot no longer matches the resting grid
+    snapTok = 0,
+    hidden = false;
+  const busy = () => raf || waves.length > 0 || ptr.k > 0.01;
+  function show() {
+    if (!hidden) return;
+    hidden = false;
+    cv.style.display = "";
+    document.body.style.removeProperty("background"); // or its dots would double the canvas's
+  }
+  function hide() {
+    if (hidden || !still) return;
+    hidden = true;
+    document.body.style.background = `url("${still}") 0 0 / ${W}px ${H}px no-repeat fixed, var(--desk)`;
+    cv.style.display = "none";
+  }
+  function invalidate() {
+    stale = true;
+    snapTok++;
+    show();
+  }
+  function rest() {
+    if (busy()) return;
+    if (!stale) return hide();
+    const tok = ++snapTok;
+    cv.toBlob(async (blob) => {
+      if (!blob || tok !== snapTok) return;
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.src = url;
+      try {
+        await img.decode(); // never swap to a background that hasn't decoded yet
+      } catch {
+        return URL.revokeObjectURL(url);
+      }
+      if (tok !== snapTok || busy()) return URL.revokeObjectURL(url);
+      if (still) URL.revokeObjectURL(still);
+      still = url;
+      stale = false;
+      hide();
+    });
   }
 
   {
@@ -708,18 +797,25 @@ function mountDesk() {
   layout();
 
   return {
-    // one wave from (x, y) in viewport px; amp 0..1
-    pulse(x, y, amp = 1) {
+    // one wave from (x, y) in viewport px; amp 0..1; delay in ms
+    pulse(x, y, amp = 1, delay = 0) {
       if (reduced) return;
       const far = Math.max(Math.hypot(x, y), Math.hypot(W - x, y), Math.hypot(x, H - y), Math.hypot(W - x, H - y));
-      waves.push({ x, y, t0: performance.now(), amp, dur: ((far + WAVE_W * 2) / WAVE_V) * 1000 });
-      if (waves.length > 4) waves.shift();
-      kick();
+      // the canvas stays asleep (hidden, no frames) until the wave really starts
+      setTimeout(() => {
+        waves.push({ x, y, t0: performance.now(), amp, dur: ((far + WAVE_W * 2) / WAVE_V) * 1000 });
+        if (waves.length > 4) waves.shift();
+        kick();
+      }, delay);
     },
     // the stage is up (or resized): its dots can be skipped
     settle() {
       measureHole();
-      draw(performance.now());
+      invalidate();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      draw(performance.now(), true);
+      rest();
     },
   };
 }
@@ -732,6 +828,12 @@ function boot(data) {
   const stage = document.getElementById("stage");
   const nameEl = document.querySelector(".name");
   const nameMark = mountName(nameEl);
+  // When the desk's wave starts. With a mouse it rides along with the sheet; on a
+  // touch screen (phones, mostly) it waits for the sheet to land, so the two never
+  // share frames and the opening itself keeps every one of them — the wave reads
+  // as the sheet's echo there.
+  const coarse = matchMedia("(pointer: coarse)");
+  const wave = (withSheet, sheetMs) => (coarse.matches ? sheetMs : withSheet);
   // a sheet's outer corner of the stage: where the desk's wave starts when it moves
   const cornerOf = (panel, b) => [
     panel.dataset.q[1] === "l" ? b.left : b.right,
@@ -916,7 +1018,7 @@ function boot(data) {
     face.setAttribute("aria-expanded", "true");
     face.tabIndex = -1;
     detail.inert = false;
-    desk.pulse(...cornerOf(panel, sb), 1);
+    desk.pulse(...cornerOf(panel, sb), 1, wave(160, OPEN.ms)); // a beat after the sheet starts: it seems to push the air
 
     // The face title becomes the detail title: same glyphs, carried across the stage.
     fTitle.style.transition = "none";
@@ -980,7 +1082,7 @@ function boot(data) {
       p.inert = false;
     });
     stage.classList.remove("is-open");
-    desk.pulse(...cornerOf(panel, sb), 0.55); // softer: the sheet folds back into its corner
+    desk.pulse(...cornerOf(panel, sb), 0.55, wave(0, CLOSE.ms)); // softer: the sheet folds back into its corner
 
     const k = keyframes(CLOSE, false, panel.dataset.q);
     const opts = { duration: k.total, easing: "linear" };
@@ -1288,7 +1390,7 @@ function boot(data) {
     tintName(null);
     to.style.setProperty("--sdir", dir); // which edge leads: it carries the sheet's shadow
     const sb = stage.getBoundingClientRect(); // (snap() has just laid out: no extra cost)
-    desk.pulse(dir === 1 ? sb.right : sb.left, sb.top + sb.height / 2, 0.7);
+    desk.pulse(dir === 1 ? sb.right : sb.left, sb.top + sb.height / 2, 0.7, wave(0, SWITCH.ms));
     stage.classList.add("is-switching");
     showGrid(a.detail, false);
 
