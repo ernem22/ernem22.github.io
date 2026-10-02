@@ -602,7 +602,8 @@ function mountDesk() {
     const stage = document.getElementById("stage");
     if (!stage || !document.body.classList.contains("is-staged")) return (hole = null);
     const r = stage.getBoundingClientRect();
-    hole = { l: r.left + 3, t: r.top + 3, r: r.right - 3, b: r.bottom - 3, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    const off = parseFloat(stage.style.getPropertyValue("--off")) || 0;
+    hole = { l: r.left + 3, t: r.top + off + 3, r: r.right - 3, b: r.bottom - 3, cx: r.left + r.width / 2, cy: r.top + (r.height + off) / 2 };
   }
 
   const paths = Array.from({ length: BUCKETS }, () => null);
@@ -843,9 +844,13 @@ function boot(data) {
   const panels = [...stage.querySelectorAll(".panel")];
   const ghost = stage.querySelector(".ghost");
   const GUTTER = 8;
-  // The masthead is a sheet of its own and stays put while a panel is open (the
-  // name used to shrink and free space for the stage: --off stays 0 now).
-  const NAME_SCALE = 1;
+  // While a section is open the name steps back to a smaller size (transform
+  // only, in step with the sheet) and the stage reaches up into the room it
+  // gives up: at rest the top sheets sit --off lower, open they rise into it.
+  // Big screens halve the name; small ones, where it's small already, shrink
+  // it less, so it never drops under ~30px tall.
+  const NAME_OPEN_PX = 30;
+  let nameK = 0.5;
 
   let rest = { sx: 0.5, sy: 0.5, off: 0 };
 
@@ -872,8 +877,9 @@ function boot(data) {
     const w = stageBox.w,
       h = stageBox.h;
     if (!w || !h) return;
-    desk.settle();
-    const off = Math.round(nameH * (1 - NAME_SCALE));
+    nameK = nameH ? Math.min(1, Math.max(0.5, NAME_OPEN_PX / nameH)) : 0.5;
+    nameEl.style.setProperty("--name-k", nameK.toFixed(3));
+    const off = Math.round(nameH * (1 - nameK));
     rest = { sx: (w - GUTTER) / 2 / w, sy: (h - off - GUTTER) / 2 / h, off };
     setVar("--off", `${off}px`);
     setVar("--sx0", rest.sx.toFixed(5));
@@ -889,6 +895,7 @@ function boot(data) {
       `${(((sv / 2 + 0.06 - 0.56 * a0) / (1 - a0) / 1.12) * 100).toFixed(3)}%`;
     setVar("--aox", anchor(rest.sx));
     setVar("--aoy", anchor(rest.sy));
+    desk.settle(); // after --off: the desk skips only what the sheets cover
   }
   const ro = new ResizeObserver(measure);
   ro.observe(stage);
@@ -1011,6 +1018,8 @@ function boot(data) {
     const sb = stage.getBoundingClientRect();
 
     stage.classList.add("is-open");
+    nameEl.style.setProperty("--nt", `${OPEN.ms}ms ${OPEN.css}`);
+    nameEl.classList.add("is-small");
     panel.classList.add("is-active", "is-reading");
     panels.forEach((p) => {
       if (p !== panel) p.classList.add("is-receding");
@@ -1082,6 +1091,8 @@ function boot(data) {
       p.inert = false;
     });
     stage.classList.remove("is-open");
+    nameEl.style.setProperty("--nt", `${CLOSE.ms}ms ${CLOSE.css}`);
+    nameEl.classList.remove("is-small");
     desk.pulse(...cornerOf(panel, sb), 0.55, wave(0, CLOSE.ms)); // softer: the sheet folds back into its corner
 
     const k = keyframes(CLOSE, false, panel.dataset.q);
@@ -1148,6 +1159,17 @@ function boot(data) {
       delete stage.dataset.hover;
     });
     panel.querySelector(".detail").inert = true; // painted but hidden: keep it out of focus / a11y
+    // what scrolls must be reachable by keyboard too (arrows / PgDn once focused);
+    // what doesn't scroll at this size isn't a tab stop (the detail itself is
+    // already the labelled region these sit in)
+    panel.querySelectorAll(".d-body, .d-body pre").forEach((el) => {
+      const sync = () => {
+        const scrolls = el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1;
+        if (scrolls) el.tabIndex = 0;
+        else el.removeAttribute("tabindex");
+      };
+      new ResizeObserver(sync).observe(el);
+    });
     face.addEventListener("click", () => act(() => open(panel)));
     face.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {

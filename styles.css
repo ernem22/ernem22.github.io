@@ -118,8 +118,12 @@ button { font: inherit; color: inherit; }
   white-space: nowrap;
   /* leans toward the pointer, the way the scenes' glyphs do */
   translate: calc(var(--mx, 0) * 4px) calc(var(--my, 0) * 2px);
-  transition: translate 1.6s var(--ease);
+  /* steps back while a section is open: transform only, on the sheet's own
+     timing (--nt, set by JS for opening / closing) */
+  transform-origin: 50% 0;
+  transition: translate 1.6s var(--ease), scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1));
 }
+.name.is-small { scale: var(--name-k, .5); }
 .name .sr {
   position: absolute;
   width: 1px;
@@ -156,23 +160,36 @@ button { font: inherit; color: inherit; }
 .name .sp { display: inline-block; width: .32em; }
 body.is-ready .name .l { opacity: 1; translate: 0 0; }
 
+/* the caret: one bar, four cells — sized to read even when the name steps back
+   (and on phones), the lit cell filled in its accent and lifted out of the bar */
 .name .caret {
+  --lw: max(1.5px, calc(var(--fs) * .022));
   display: inline-flex;
-  width: .5em;
-  height: .13em;
-  margin-left: .1em;
-  border: max(1.5px, calc(var(--fs) * .018)) solid var(--cherry);
+  width: max(.7em, 30px);
+  height: max(.24em, 9px);
+  margin-left: .12em;
+  border: var(--lw) solid var(--cherry);
   background: var(--cream);
   box-shadow: 2px 2px 0 var(--cherry);
   opacity: 0;
   transition: opacity .4s linear 1s;
 }
-.name .caret i { flex: 1; transition: background-color .6s linear; }
-.name .caret i + i { border-left: 1px solid var(--c30); }
-.name .caret i.is-on { background: var(--lk); }
+.name .caret i {
+  position: relative;
+  flex: 1;
+  transition: background-color .5s linear, translate .55s var(--ease), box-shadow .55s var(--ease);
+}
+.name .caret i + i { border-left: var(--lw) solid var(--cherry); }
+.name .caret i.is-on {
+  z-index: 1;
+  background: var(--lk);
+  translate: 0 -45%;
+  box-shadow: 0 0 0 var(--lw) var(--cherry), 2px 2px 0 var(--lw) var(--cherry);
+}
 body.is-ready .name .caret { opacity: 1; animation: caret-blink 1.1s steps(1) 1.4s infinite; }
 /* lit, it holds still: it's showing where you are */
 body.is-ready .name.is-lit .caret { animation: none; }
+.d-body:focus-visible, .d-body pre:focus-visible { outline: var(--bw) dashed var(--cherry); outline-offset: 3px; }
 @keyframes caret-blink { 50% { opacity: 0; } }
 
 /* the desk's dot grid, drawn by JS on a canvas under everything (the CSS grid
@@ -841,6 +858,12 @@ body:not(.is-staged) .stage { visibility: hidden; }
   .stage:not(.is-open) .panel .indicator { opacity: .55; transform: none; }
 }
 .face:active .indicator { opacity: 1; transform: none; }
+/* a phone on its side: the quadrants are short, so the affordance is just the
+   arrow — the label would sit on top of the scene */
+@media (hover: none) and (max-height: 500px) {
+  .indicator { gap: 0; padding: .4rem; }
+  .ind-label { display: none; }
+}
 
 /* ──────────────────────────────────────────────────────────────
    Open state
@@ -2098,6 +2121,15 @@ a.soon { cursor: default; }
   /* touch: every control at least 40px */
   .d-nav button { height: 40px; min-width: 40px; justify-content: center; }
   .close i { width: 40px; height: 40px; }
+  /* the narrowest phones: the head row (title, ← →, ×) must fit in one line —
+     the title gives up a little size first, then the gaps */
+  .d-titlewrap { min-width: 0; gap: 12px; }
+  .d-title { --fs: round(clamp(1.75rem, 10cqi, 2.3rem), 1px); }
+  .d-head { gap: 10px; }
+  .d-nav { margin-right: 4px; }
+  /* the techstack hint wraps inside the column instead of pushing past it */
+  .statusline { min-width: 0; }
+  .statusline .hint { min-width: 0; white-space: normal; text-align: center; }
   .take-x { width: 34px; height: 34px; }
   .proj-list button { min-height: 44px; }
 }
