@@ -103,19 +103,21 @@ button { font: inherit; color: inherit; }
 }
 .name {
   /* by width, and by height too: a phone on its side keeps its room for the stage */
-  --fs: round(clamp(2.2rem, min(6vw, 11vh), 5.6rem), 1px);
+  --fs: round(clamp(2.6rem, min(7.6vw, 13vh), 7rem), 1px);
   position: relative;
   display: inline-flex;
   align-items: baseline;
   margin: 0;
   /* optical centre: the caret hangs off the right end — shift by half of it */
-  margin-left: calc(var(--fs) * .6);
+  margin-left: calc(var(--fs) * .62);
   font-family: var(--mono);
   font-weight: 600;
   font-size: var(--fs);
   line-height: 1;
-  letter-spacing: -.045em;
+  letter-spacing: -.05em;
   white-space: nowrap;
+  /* sticker language: the name sits on its own hard shadow, like the cards */
+  text-shadow: calc(var(--fs) * .035) calc(var(--fs) * .035) 0 var(--c30);
   /* leans toward the pointer, the way the scenes' glyphs do */
   translate: calc(var(--mx, 0) * 4px) calc(var(--my, 0) * 2px);
   /* steps back while a section is open: transform only, on the sheet's own
@@ -139,8 +141,8 @@ button { font: inherit; color: inherit; }
   z-index: -1;
   left: -.03em;
   right: -.03em;
-  bottom: .04em;
-  height: .28em;
+  bottom: .02em;
+  height: .36em;
   background: var(--lk, var(--acc-info));
   transform: scaleX(0);
   transform-origin: left;
@@ -163,28 +165,37 @@ body.is-ready .name .l { opacity: 1; translate: 0 0; }
 /* the caret: one bar, four cells — sized to read even when the name steps back
    (and on phones), the lit cell filled in its accent and lifted out of the bar */
 .name .caret {
-  --lw: max(1.5px, calc(var(--fs) * .022));
+  --lw: max(2px, calc(var(--fs) * .03));
   display: inline-flex;
-  width: max(.7em, 30px);
-  height: max(.24em, 9px);
-  margin-left: .12em;
+  width: max(1.1em, 56px);
+  height: max(.66em, 26px);
+  margin-left: .14em;
+  align-self: baseline;
   border: var(--lw) solid var(--cherry);
   background: var(--cream);
-  box-shadow: 2px 2px 0 var(--cherry);
+  box-shadow: calc(var(--fs) * .05) calc(var(--fs) * .05) 0 var(--cherry);
+  text-shadow: none;
   opacity: 0;
   transition: opacity .4s linear 1s;
 }
+/* at rest each tile already holds its section's colour (the boot tiles'
+   colours), so the bar reads as the four territories; the lit one lifts */
 .name .caret i {
   position: relative;
   flex: 1;
-  transition: background-color .5s linear, translate .55s var(--ease), box-shadow .55s var(--ease);
+  background: var(--tc);
+  transition: translate .55s var(--ease), box-shadow .55s var(--ease), filter .5s linear;
 }
+.name .caret i[data-k="info"] { --tc: var(--acc-info); }
+.name .caret i[data-k="projects"] { --tc: var(--acc-projects); }
+.name .caret i[data-k="tech"] { --tc: var(--acc-tech); }
+.name .caret i[data-k="contact"] { --tc: var(--acc-contact); }
 .name .caret i + i { border-left: var(--lw) solid var(--cherry); }
+.name.is-lit .caret i:not(.is-on) { filter: saturate(.55) brightness(1.06); }
 .name .caret i.is-on {
   z-index: 1;
-  background: var(--lk);
-  translate: 0 -45%;
-  box-shadow: 0 0 0 var(--lw) var(--cherry), 2px 2px 0 var(--lw) var(--cherry);
+  translate: 0 -22%;
+  box-shadow: 0 0 0 var(--lw) var(--cherry), calc(var(--fs) * .05) calc(var(--fs) * .05) 0 var(--lw) var(--cherry);
 }
 body.is-ready .name .caret { opacity: 1; animation: caret-blink 1.1s steps(1) 1.4s infinite; }
 /* lit, it holds still: it's showing where you are */
