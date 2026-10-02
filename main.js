@@ -486,25 +486,55 @@ const CLOSE = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   Name — set in the site's mono, with the site's caret after it.
-   The caret is cut into four cells, one per section, in section order;
-   the hovered (or open) section's cell takes its accent, and the same
-   accent is swept under the name as a marker — the Contact address's
-   highlight, brought up to the masthead.
+   Name — the masthead's nameplate: the name (serif first name, mono
+   surname), a four-quadrant mark in section order, and a dateline with the
+   role, the place and a live clock. The hovered (or open) section's
+   quadrant comes online and its accent is swept under the name as a
+   highlighter — the Contact address's marker, brought up to the masthead —
+   and registered behind the letters. At rest the quadrants scan in turn.
    ────────────────────────────────────────────────────────────── */
 const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
-function mountName(nameEl) {
+function mountName(nameEl, site = {}, labels = []) {
   const text = nameEl.textContent.trim();
+  const split = text.indexOf(" "); // before it: the serif first name
   let i = 0;
   const letters = [...text]
-    .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
+    .map((c, n) =>
+      c === " "
+        ? '<span class="sp"></span>'
+        : `<span class="l ${split < 0 || n < split ? "f" : "r"}" style="--i:${i++}">${esc(c)}</span>`,
+    )
     .join("");
+  const dateline = site.role
+    ? `<span class="dateline" aria-hidden="true"><span>${esc(site.role)}</span><span class="run"></span><i class="lead"></i>` +
+      (site.based ? `<span>${esc(site.based)}</span>` : "") +
+      (site.timezone ? '<i class="pip"></i><b class="clk">--:--:--</b>' : "") +
+      "</span>"
+    : "";
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="ink" aria-hidden="true">${letters}</span>` +
-    `<span class="caret" aria-hidden="true">${SECTION_KEYS.map((k) => `<i data-k="${k}"></i>`).join("")}</span>`;
-  const cells = [...nameEl.querySelectorAll(".caret i")];
+    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
+    `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"></i>`).join("")}</span></span>` +
+    dateline;
+  const cells = [...nameEl.querySelectorAll(".mark i")];
+  const run = nameEl.querySelector(".run");
+
+  // the dateline's clock, in the site's own time zone
+  const clk = nameEl.querySelector(".clk");
+  if (clk) {
+    let fmt;
+    try {
+      fmt = new Intl.DateTimeFormat("en-GB", { timeZone: site.timezone, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+    } catch {
+      clk.remove();
+    }
+    if (fmt) {
+      const tick = () => (clk.textContent = fmt.format(new Date()));
+      tick();
+      setInterval(tick, 1000);
+    }
+  }
 
   // leans toward the pointer a few pixels, the way the scenes' glyphs do
   addEventListener(
@@ -526,6 +556,9 @@ function mountName(nameEl) {
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
+        // the running head keeps its words while it retracts
+        const label = labels[SECTION_KEYS.indexOf(key)];
+        if (run && label) run.textContent = label;
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
@@ -828,7 +861,7 @@ const desk = mountDesk();
 function boot(data) {
   const stage = document.getElementById("stage");
   const nameEl = document.querySelector(".name");
-  const nameMark = mountName(nameEl);
+  const nameMark = mountName(nameEl, data.site, data.panels.map((p) => p.face?.index || ""));
   // When the desk's wave starts. With a mouse it rides along with the sheet; on a
   // touch screen (phones, mostly) it waits for the sheet to land, so the two never
   // share frames and the opening itself keeps every one of them — the wave reads
