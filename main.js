@@ -510,7 +510,7 @@ function mountName(nameEl) {
   addEventListener(
       "pointermove",
       (e) => {
-        if (reduced) return;
+        if (reduced || e.pointerType !== "mouse") return; // a finger scrolling isn't a pointer to lean to
         nameEl.style.setProperty("--mx", ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
         nameEl.style.setProperty("--my", ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
       },
@@ -898,6 +898,8 @@ function boot(data) {
     if (state !== "idle") return;
     state = "opening";
     current = panel;
+    // on touch the tap's pointerleave has already cleared the hover tint: light it for the open panel
+    tintName(panel);
     const { win, canvas, face, fTitle, detail, dTitle } = parts(panel);
 
     // Read geometry first, then only write: no forced style/layout inside the click.
