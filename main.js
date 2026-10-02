@@ -486,353 +486,244 @@ const CLOSE = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   Name — a pixel mosaic on a canvas.
-   Each letter is a 5×7 bitmap; with room, every one of its pixels is split
-   into 2×2 squares. Every square has a fixed colour, one of the four
-   sections' grounds, scattered like a mosaic. Squares rise straight up off
-   the page as small blocks (inked face, cherry side below); at rest they
-   all stand a little, and the pointer — wherever it is on the page — raises
-   the ones nearest it, the rest sinking back with distance. Over a section,
-   that section's squares stand up a touch more. Colours never change; only
-   which squares are up does. The name reads at every moment.
+   Name — set in the site's mono, with the site's caret after it.
+   The caret is cut into four cells, one per section, in section order;
+   the hovered (or open) section's cell takes its accent, and the same
+   accent is swept under the name as a marker — the Contact address's
+   highlight, brought up to the masthead.
    ────────────────────────────────────────────────────────────── */
-const PIXEL_FONT = {
-  A: [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
-  B: ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
-  C: [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
-  D: ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
-  E: ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
-  F: ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
-  G: [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
-  H: ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
-  I: ["###", ".#.", ".#.", ".#.", ".#.", ".#.", "###"],
-  J: ["..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."],
-  K: ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"],
-  L: ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
-  M: ["#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"],
-  N: ["#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#", "#...#"],
-  O: [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
-  P: ["####.", "#...#", "#...#", "####.", "#....", "#....", "#...."],
-  Q: [".###.", "#...#", "#...#", "#...#", "#.#.#", "#..#.", ".##.#"],
-  R: ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
-  S: [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
-  T: ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
-  U: ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
-  V: ["#...#", "#...#", "#...#", "#...#", "#...#", ".#.#.", "..#.."],
-  W: ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"],
-  X: ["#...#", "#...#", ".#.#.", "..#..", ".#.#.", "#...#", "#...#"],
-  Y: ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
-  Z: ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"],
-};
+const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
-// Bold cuts (8 tall, two-pixel stems) for the letters that have been drawn;
-// any other letter is thickened from the 5×7 set automatically.
-const PIXEL_BOLD = {
-  A: [".####.", "######", "##..##", "##..##", "######", "######", "##..##", "##..##"],
-  C: [".#####", "######", "##....", "##....", "##....", "##....", "######", ".#####"],
-  E: ["######", "######", "##....", "#####.", "#####.", "##....", "######", "######"],
-  I: ["##", "##", "##", "##", "##", "##", "##", "##"],
-  M: ["##...##", "###.###", "#######", "##.#.##", "##...##", "##...##", "##...##", "##...##"],
-  N: ["##...##", "###..##", "####.##", "##.####", "##..###", "##...##", "##...##", "##...##"],
-  R: ["#####.", "######", "##..##", "######", "#####.", "##.##.", "##..##", "##..##"],
-  T: ["######", "######", "..##..", "..##..", "..##..", "..##..", "..##..", "..##.."],
-};
-const boldGlyph = (ch) => {
-  if (PIXEL_BOLD[ch]) return PIXEL_BOLD[ch];
-  const g = PIXEL_FONT[ch];
-  if (!g) return null;
-  // thicken: every pixel also fills the one to its right; the middle row doubles
-  const wide = g.map((row) => [...row + "."].map((v, x) => (v === "#" || row[x - 1] === "#" ? "#" : ".")).join(""));
-  return [...wide.slice(0, 4), wide[3], ...wide.slice(4)];
-};
-
-function mountPixelName(nameEl) {
+function mountName(nameEl) {
   const text = nameEl.textContent.trim();
-  nameEl.innerHTML = `<span class="sr">${esc(text)}</span><canvas aria-hidden="true"></canvas>`;
-  const cv = nameEl.querySelector("canvas");
-  const ctx = cv.getContext("2d");
+  let i = 0;
+  const letters = [...text]
+    .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
+    .join("");
+  nameEl.innerHTML =
+    `<span class="sr">${esc(text)}</span>` +
+    `<span class="ink" aria-hidden="true">${letters}</span>` +
+    `<span class="caret" aria-hidden="true">${SECTION_KEYS.map((k) => `<i data-k="${k}"></i>`).join("")}</span>`;
+  const cells = [...nameEl.querySelectorAll(".caret i")];
 
-  const rgb = (v) => {
-    let h = String(v).trim().replace("#", "");
-    if (h.length === 3) h = [...h].map((c) => c + c).join("");
-    const n = parseInt(h, 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  };
-  const css = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
-  const INK = rgb(getComputedStyle(document.documentElement).getPropertyValue("--cherry") || "#861024");
-  // the four sections' grounds — the mid tones of their scenes' gradients
-  const SECTIONS = ["info", "projects", "tech", "contact"];
-  const TONES = [rgb("#f3bd6c"), rgb("#8fb1ea"), rgb("#bda5ef"), rgb("#86cfb9")];
-  const PAPER = rgb("#fffaf0");
-  const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  // leans toward the pointer a few pixels, the way the scenes' glyphs do
+  addEventListener(
+      "pointermove",
+      (e) => {
+        if (reduced) return;
+        nameEl.style.setProperty("--mx", ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
+        nameEl.style.setProperty("--my", ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
+      },
+      { passive: true },
+    );
 
-  // lay the text out in font pixels (1px between letters, 4 for a space)
-  const on = new Set();
-  let fw = 0;
-  for (const ch of text.toUpperCase()) {
-    const g = boldGlyph(ch);
-    if (!g) {
-      fw += ch === " " ? 3 : 4;
-      continue;
-    }
-    g.forEach((row, y) => [...row].forEach((v, x) => v === "#" && on.add(`${fw + x},${y}`)));
-    fw += g[0].length + 1;
-  }
-  fw = Math.max(1, fw - 1);
-  const FH = 8;
-
-  let s = 2, // squares per font pixel, per side
-    p = 7, // pitch of one square, css px
-    q = 6, // drawn square size
-    M = 2, // matrix margin round the letters, in squares
-    cols = 0,
-    rows = 0,
-    RISE = 12, // a square's full height, css px
-    LY = 0, // headroom above the matrix for the rise
-    RX = 0, // room on the right for the cast shadows
-    dpr = 1,
-    cells = [], // every square of the matrix
-    lit = []; // the letters' squares, top row first (draw order)
-
-  // a stable pseudo-random per square, so a resize never reshuffles the mosaic
-  const hash = (c, r, k) => {
-    let h = Math.imul(c + 1, 73856093) ^ Math.imul(r + 1, 19349663) ^ Math.imul(k + 7, 83492791);
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
-    return (h ^ (h >>> 16)) >>> 0;
-  };
-
-  function build() {
-    const avail = nameEl.parentElement.clientWidth || innerWidth;
-    const pitch = (sub) =>
-      Math.floor(Math.min((avail * 0.95) / ((fw + 6) * sub), (innerHeight * 0.17) / ((FH + 2) * sub), 9));
-    s = pitch(2) >= 5 ? 2 : 1; // many small squares when there's room for them
-    p = Math.max(3, pitch(s));
-    q = p - Math.max(1, Math.round(p * 0.16));
-    M = s;
-    cols = fw * s + 2 * M;
-    rows = FH * s + 2 * M;
-    RISE = Math.round(p * 2.6);
-    LY = RISE + 2;
-    RX = Math.ceil(RISE * 0.45) + 1;
-    const prev = new Map(cells.map((c) => [c.k, c]));
-    cells = [];
-    const tone = new Map(); // mosaic: no two touching squares share a colour
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++) {
-        const fx = Math.floor((c - M) / s),
-          fy = Math.floor((r - M) / s);
-        const isLit = c >= M && r >= M && c < cols - M && r < rows - M && on.has(`${fx},${fy}`);
-        const k = `${c},${r}`;
-        let t = hash(c, r, s) % 4;
-        for (let i = 0; i < 4 && (t === tone.get(`${c - 1},${r}`) || t === tone.get(`${c},${r - 1}`)); i++)
-          t = (t + 1) % 4;
-        tone.set(k, t);
-        const old = prev.get(k);
-        cells.push({
-          k,
-          c,
-          r,
-          lit: isLit,
-          x: c * p,
-          y: r * p,
-          tone: t,
-          l: old ? old.l : 0, // how far up, 0..1
-          at: old ? old.at : 0, // when it lands (intro)
-          landed: old ? old.landed : false,
-        });
+  let offT = 0;
+  return {
+    tint(key) {
+      clearTimeout(offT);
+      if (key) {
+        // --lk outlives the hover, so the marker retracts in the colour it came in
+        nameEl.style.setProperty("--lk", `var(--acc-${key})`);
+        nameEl.classList.add("is-lit");
+        cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
+      } else {
+        // crossing the gutter between two corners shouldn't flicker the marker
+        offT = setTimeout(() => {
+          nameEl.classList.remove("is-lit");
+          cells.forEach((c) => c.classList.remove("is-on"));
+        }, 140);
       }
-    lit = cells.filter((c) => c.lit); // already top row first
+    },
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Desk — the page's dot grid, drawn on a canvas under everything.
+   Same pitch and offset as the CSS grid it replaces (and the boot
+   screen's), so nothing shifts when it takes over. Every fourth dot
+   is a touch stronger, like dot paper. Dots near the pointer darken
+   and lean away from it; opening, closing and switching a section
+   sends one soft wave through the grid from where the sheet moves.
+   Idle, it costs nothing: frames only run while something moves.
+   ────────────────────────────────────────────────────────────── */
+function mountDesk() {
+  const cv = document.createElement("canvas");
+  cv.className = "desk";
+  cv.setAttribute("aria-hidden", "true");
+  const ctx = cv.getContext("2d");
+  if (!ctx) return { pulse() {} };
+  document.body.prepend(cv);
+  document.documentElement.classList.add("has-desk");
+
+  const PITCH = 22,
+    R = 1.05, // a dot's radius, css px
+    A = 0.15, // a dot's ink
+    A_MAJOR = 0.24, // every fourth dot's ink
+    NEAR = 150, // the pointer's reach
+    WAVE_W = 70, // the wave's band, px
+    WAVE_V = 1250; // the wave's speed, px/s
+  const INK = "134, 16, 36";
+  const BUCKETS = 14; // alpha levels: one path, one fill each
+
+  let W = 0,
+    H = 0,
+    dpr = 1,
+    edge = 0,
+    dots = [], // { x, y, a }
+    hole = null; // the stage's box once it's up: its dots are never seen
+  const ptr = { x: 0, y: 0, tx: 0, ty: 0, k: 0, on: false }; // k: presence, eased
+  const waves = []; // { x, y, t0, amp, dur }
+  let raf = 0;
+
+  function layout() {
     dpr = Math.min(2, devicePixelRatio || 1);
-    const w = cols * p + RX,
-      h = rows * p + LY + Math.ceil(RISE * 0.2);
-    cv.style.width = `${w}px`;
-    cv.style.height = `${h}px`;
-    cv.width = Math.round(w * dpr);
-    cv.height = Math.round(h * dpr);
-    // the caret: three font pixels by one, one pixel after the name, on its baseline
-    nameEl.style.setProperty("--cw", `${3 * s * p - (p - q)}px`);
-    nameEl.style.setProperty("--ch", `${s * p - (p - q)}px`);
-    nameEl.style.setProperty("--cb", `${M * p + (p - q) + Math.ceil(RISE * 0.2)}px`);
-    nameEl.style.setProperty("--cg", `${-RX}px`); // the shadow room isn't part of the name
-    nameEl.style.setProperty("--lx", "0px");
-    introPlanned = false;
-    kick();
+    W = innerWidth;
+    H = innerHeight;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    cv.style.width = `${W}px`;
+    cv.style.height = `${H}px`;
+    edge = parseFloat(getComputedStyle(document.body).paddingLeft) || 0;
+    // dots sit on edge + k·pitch (the CSS grid's tile centres), k reaching past both sides
+    const k0x = -Math.ceil(edge / PITCH),
+      k0y = k0x;
+    dots = [];
+    for (let ky = k0y; edge + ky * PITCH <= H + PITCH; ky++)
+      for (let kx = k0x; edge + kx * PITCH <= W + PITCH; kx++)
+        dots.push({ x: edge + kx * PITCH, y: edge + ky * PITCH, a: kx % 4 === 0 && ky % 4 === 0 ? A_MAJOR : A });
+    measureHole();
+    draw(performance.now());
+  }
+  function measureHole() {
+    const stage = document.getElementById("stage");
+    if (!stage || !document.body.classList.contains("is-staged")) return (hole = null);
+    const r = stage.getBoundingClientRect();
+    hole = { l: r.left + 3, t: r.top + 3, r: r.right - 3, b: r.bottom - 3, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
   }
 
-  const REST = 0.14; // at rest every square stands a little: never flat
-  let ptr = null, // pointer, client coords
-    raf = 0,
-    last = 0,
-    lastDraw = 0,
-    lastMove = -1e9,
-    introPlanned = false,
-    introEnd = Infinity,
-    waveAt = -1e9,
-    boostKey = -1, // the hovered section: its squares stand up a touch more
-    boostAmt = 0;
-  const WAVE_MS = 1800;
+  const paths = Array.from({ length: BUCKETS }, () => null);
+  function draw(now) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < BUCKETS; i++) paths[i] = new Path2D();
 
-  function kick() {
-    if (!raf) raf = requestAnimationFrame(frame);
+    // the waves still running, with their current radius and strength
+    const live = [];
+    for (let i = waves.length - 1; i >= 0; i--) {
+      const w = waves[i],
+        t = (now - w.t0) / w.dur;
+      if (t >= 1) {
+        waves.splice(i, 1);
+        continue;
+      }
+      if (t < 0) continue;
+      live.push({ x: w.x, y: w.y, r: (now - w.t0) * (WAVE_V / 1000), s: w.amp * (1 - t) * (1 - t) });
+    }
+    const near = ptr.k > 0.01;
+
+    for (const d of dots) {
+      if (hole && d.x > hole.l && d.x < hole.r && d.y > hole.t && d.y < hole.b &&
+        Math.abs(d.x - hole.cx) > 6 && Math.abs(d.y - hole.cy) > 6) continue; // under a sheet: never seen
+      let a = d.a,
+        r = R,
+        ox = 0,
+        oy = 0;
+      if (near) {
+        const dx = d.x - ptr.x,
+          dy = d.y - ptr.y,
+          dist = Math.hypot(dx, dy);
+        if (dist < NEAR) {
+          const g = (1 - dist / NEAR) ** 2 * ptr.k;
+          a += 0.32 * g;
+          r += 0.55 * g;
+          if (dist > 0.1) {
+            ox += (dx / dist) * 2.2 * g;
+            oy += (dy / dist) * 2.2 * g;
+          }
+        }
+      }
+      for (const w of live) {
+        const dx = d.x - w.x,
+          dy = d.y - w.y,
+          dist = Math.hypot(dx, dy),
+          u = (dist - w.r) / WAVE_W;
+        if (u < -2.5 || u > 2.5) continue;
+        const g = Math.exp(-u * u) * w.s;
+        a += 0.42 * g;
+        r += 0.9 * g;
+        if (dist > 0.1) {
+          ox += (dx / dist) * 3 * g;
+          oy += (dy / dist) * 3 * g;
+        }
+      }
+      const b = Math.min(BUCKETS - 1, Math.round(Math.min(1, a) * (BUCKETS - 1) / 0.75));
+      const x = d.x + ox,
+        y = d.y + oy;
+      paths[b].moveTo(x + r, y);
+      paths[b].arc(x, y, r, 0, Math.PI * 2);
+    }
+    for (let i = 0; i < BUCKETS; i++) {
+      ctx.fillStyle = `rgba(${INK}, ${((i / (BUCKETS - 1)) * 0.75).toFixed(3)})`;
+      ctx.fill(paths[i]);
+    }
+    return live.length > 0;
   }
 
   function frame(now) {
     raf = 0;
-    const dt = Math.min(64, last ? now - last : 16);
-    last = now;
-    if (!document.body.classList.contains("is-staged")) {
-      raf = requestAnimationFrame(frame); // wait for the stage to arrive
-      return;
-    }
-    if (!introPlanned) {
-      introPlanned = true;
-      // intro: the squares drop in left to right, each a touch off the beat
-      for (const cell of lit)
-        if (!cell.at) cell.at = reduced ? now : now + 120 + (cell.c / cols) * 900 + Math.random() * 180;
-      introEnd = lit.reduce((m, c) => Math.max(m, c.at), 0) + 1200;
-    }
-    const waveT = (now - waveAt) / WAVE_MS;
-    const waving = waveT >= 0 && waveT <= 1 && !reduced;
-    // nothing moving but the settle: 30 frames a second is plenty
-    if (!waving && now - lastMove > 1500 && now > introEnd && now - lastDraw < 33) {
-      kick();
-      return;
-    }
-    lastDraw = now;
-
-    const box = cv.getBoundingClientRect();
-    const H = rows * p;
-    let px = null,
-      py = null;
-    if (ptr && !reduced) {
-      px = ptr.x - box.left;
-      py = ptr.y - box.top - LY;
-    }
-    const D = H * 1.7; // half-strength distance of the pointer's pull
-    const R = p * 10; // the close-up peak
-    const wc = -8 * s + (cols + 16 * s) * waveT;
-    const kb = 1 - Math.exp(-dt / 220);
-    boostAmt += ((boostKey >= 0 ? 1 : 0) - boostAmt) * kb;
-
-    const kUp = 1 - Math.exp(-dt / 70),
-      kDn = 1 - Math.exp(-dt / 260);
-    let busy = Math.abs((boostKey >= 0 ? 1 : 0) - boostAmt) > 0.004;
-    for (const cell of lit) {
-      if (now < cell.at) {
-        busy = true;
-        continue;
-      }
-      if (!cell.landed) {
-        cell.landed = true;
-        cell.l = reduced ? REST : 1.15; // drops in from above, settles
-      }
-      const cx = cell.x + p / 2,
-        cy = cell.y + p / 2;
-      let t = REST;
-      if (px !== null) {
-        // the pull: anywhere on the page, nearest squares highest
-        const d = Math.hypot(cx - px, cy - py);
-        const g = 1 / (1 + (d / D) ** 2);
-        const f = Math.max(0, 1 - d / R);
-        t = REST + (1 - REST) * Math.max(g * g * 0.85, f * f * (3 - 2 * f));
-      }
-      if (cell.tone === boostKey) t += 0.3 * boostAmt * (1 - t);
-      if (waving) t = Math.max(t, REST + 0.5 * Math.exp(-(((cell.c - wc) / (3.4 * s)) ** 2)));
-      cell.l += (t - cell.l) * (t > cell.l ? kUp : kDn);
-      if (Math.abs(t - cell.l) < 0.002) cell.l = t;
-      else busy = true;
-    }
-
-    draw(px, py, R);
-    if (busy || waving) kick();
+    ptr.x += (ptr.tx - ptr.x) * 0.16;
+    ptr.y += (ptr.ty - ptr.y) * 0.16;
+    ptr.k += ((ptr.on ? 1 : 0) - ptr.k) * 0.08;
+    const waving = draw(now);
+    const settling = Math.abs(ptr.tx - ptr.x) + Math.abs(ptr.ty - ptr.y) > 0.3 || Math.abs((ptr.on ? 1 : 0) - ptr.k) > 0.005;
+    if (waving || settling) kick();
+  }
+  function kick() {
+    if (!raf && !document.hidden) raf = requestAnimationFrame(frame);
   }
 
-  function draw(px, py, R) {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, cv.width, cv.height);
-    ctx.translate(0, LY);
-    const now = performance.now();
-    ctx.lineWidth = 1;
-    // the empty matrix, faintly, round the pointer when it's close
-    if (px !== null) {
-      for (const cell of cells) {
-        if (cell.lit) continue;
-        const f = 1 - Math.hypot(cell.x + p / 2 - px, cell.y + p / 2 - py) / R;
-        if (f <= 0) continue;
-        ctx.strokeStyle = css(INK, 0.16 * f * f);
-        ctx.strokeRect(cell.x + 0.5, cell.y + 0.5, q - 1, q - 1);
-      }
-    }
-    // what each block throws on the page: a hard shadow down-right, the
-    // longer the higher it stands (the site's sticker shadow, grown by height)
-    ctx.fillStyle = css(INK, 0.2);
-    for (const cell of lit) {
-      if (now < cell.at || cell.l < 0.02) continue;
-      const h = cell.l * RISE;
-      ctx.fillRect(cell.x + h * 0.45, cell.y + h * 0.2, q, q);
-    }
-    // the blocks, top row first: a lower block's face covers the side of the
-    // one above it, as it would seen from the front
-    for (const cell of lit) {
-      if (now < cell.at) continue;
-      const h = Math.round(cell.l * RISE * 2) / 2; // half pixels: crisp at 2x
-      const y = cell.y - h;
-      // its side, from the face down to where it stands
-      ctx.fillStyle = css(INK);
-      ctx.fillRect(cell.x, y + q - 1, q, h + 1);
-      // its face, in its own colour — lit by its height: up high it catches the
-      // light, down low it sits in the others' shade (light, not a new colour)
-      const tone = TONES[cell.tone];
-      ctx.fillStyle = css(
-        cell.l > 0.5 ? mix(tone, PAPER, (cell.l - 0.5) * 0.7) : mix(tone, INK, (0.5 - cell.l) * 0.32),
-      );
-      ctx.fillRect(cell.x, y, q, q);
-      if (q >= 4) {
-        ctx.strokeStyle = css(INK);
-        ctx.strokeRect(cell.x + 0.5, y + 0.5, q - 1, q - 1);
-      }
-    }
-  }
-
-  if (!reduced) {
+  {
     addEventListener(
       "pointermove",
       (e) => {
-        ptr = { x: e.clientX, y: e.clientY };
-        lastMove = performance.now();
+        if (reduced || e.pointerType !== "mouse") return; // touch has no hover to answer
+        ptr.tx = e.clientX;
+        ptr.ty = e.clientY;
+        if (!ptr.on) {
+          ptr.on = true;
+          ptr.x = ptr.tx;
+          ptr.y = ptr.ty;
+        }
         kick();
       },
       { passive: true },
     );
-    const away = () => {
-      ptr = null;
-      lastMove = performance.now();
+    document.documentElement.addEventListener("pointerleave", () => {
+      ptr.on = false;
       kick();
-    };
-    document.documentElement.addEventListener("pointerleave", away);
-    addEventListener("pointerup", (e) => e.pointerType !== "mouse" && setTimeout(away, 500));
-    // no pointer about (or a touch screen): a gentle wave now and then
-    const wave = () =>
-      setTimeout(() => {
-        if (!document.hidden && !ptr) {
-          waveAt = performance.now();
-          kick();
-        }
-        wave();
-      }, 9000 + Math.random() * 6000);
-    wave();
+    });
   }
   document.addEventListener("visibilitychange", () => !document.hidden && kick());
-  new ResizeObserver(build).observe(nameEl.parentElement);
+  addEventListener("resize", layout);
+  layout();
 
   return {
-    // the hovered / open section: its squares stand up a touch more
-    tint(key) {
-      boostKey = SECTIONS.indexOf(key);
+    // one wave from (x, y) in viewport px; amp 0..1
+    pulse(x, y, amp = 1) {
+      if (reduced) return;
+      const far = Math.max(Math.hypot(x, y), Math.hypot(W - x, y), Math.hypot(x, H - y), Math.hypot(W - x, H - y));
+      waves.push({ x, y, t0: performance.now(), amp, dur: ((far + WAVE_W * 2) / WAVE_V) * 1000 });
+      if (waves.length > 4) waves.shift();
       kick();
+    },
+    // the stage is up (or resized): its dots can be skipped
+    settle() {
+      measureHole();
+      draw(performance.now());
     },
   };
 }
+const desk = mountDesk();
 
 /* ──────────────────────────────────────────────────────────────
    The engine. Runs once the stage has been rendered from data.js.
@@ -840,7 +731,12 @@ function mountPixelName(nameEl) {
 function boot(data) {
   const stage = document.getElementById("stage");
   const nameEl = document.querySelector(".name");
-  const pixelName = mountPixelName(nameEl);
+  const nameMark = mountName(nameEl);
+  // a sheet's outer corner of the stage: where the desk's wave starts when it moves
+  const cornerOf = (panel, b) => [
+    panel.dataset.q[1] === "l" ? b.left : b.right,
+    panel.dataset.q[0] === "t" ? b.top : b.bottom,
+  ];
 
   const panels = [...stage.querySelectorAll(".panel")];
   const ghost = stage.querySelector(".ghost");
@@ -874,6 +770,7 @@ function boot(data) {
     const w = stageBox.w,
       h = stageBox.h;
     if (!w || !h) return;
+    desk.settle();
     const off = Math.round(nameH * (1 - NAME_SCALE));
     rest = { sx: (w - GUTTER) / 2 / w, sy: (h - off - GUTTER) / 2 / h, off };
     setVar("--off", `${off}px`);
@@ -1007,6 +904,7 @@ function boot(data) {
     // (The detail is laid out even while hidden, so its title can be measured now.)
     const from = fTitle.getBoundingClientRect();
     const to = dTitle.getBoundingClientRect();
+    const sb = stage.getBoundingClientRect();
 
     stage.classList.add("is-open");
     panel.classList.add("is-active", "is-reading");
@@ -1016,6 +914,7 @@ function boot(data) {
     face.setAttribute("aria-expanded", "true");
     face.tabIndex = -1;
     detail.inert = false;
+    desk.pulse(...cornerOf(panel, sb), 1);
 
     // The face title becomes the detail title: same glyphs, carried across the stage.
     fTitle.style.transition = "none";
@@ -1071,6 +970,7 @@ function boot(data) {
     const { win, canvas, face, fTitle, detail, dTitle } = parts(panel);
 
     const from = dTitle.getBoundingClientRect();
+    const sb = stage.getBoundingClientRect();
 
     stage.classList.remove("is-still");
     panels.forEach((p) => {
@@ -1078,6 +978,7 @@ function boot(data) {
       p.inert = false;
     });
     stage.classList.remove("is-open");
+    desk.pulse(...cornerOf(panel, sb), 0.55); // softer: the sheet folds back into its corner
 
     const k = keyframes(CLOSE, false, panel.dataset.q);
     const opts = { duration: k.total, easing: "linear" };
@@ -1122,23 +1023,11 @@ function boot(data) {
     tintName(hovered);
   }
 
-  // The name's shadow echoes the hovered (or open) panel's accent.
-  // (colours live in the CSS tokens: --acc-info, --acc-projects, …)
-  const ACCENT = Object.fromEntries(
-    panels.map((p) => [p.id, `var(--acc-${p.id.replace(/^p-/, "")})`]),
-  );
+  // The name's marker and caret cell echo the hovered (or open) panel's accent.
   let hovered = null;
-  const mast = nameEl.closest(".masthead");
   function tintName(panel) {
     const p = current || panel;
-    pixelName.tint(p ? p.id.replace(/^p-/, "") : null);
-    if (p) {
-      mast.style.setProperty("--nacc", ACCENT[p.id]);
-      mast.style.setProperty("--k", ACCENT[p.id]);
-    } else {
-      mast.style.removeProperty("--nacc");
-      mast.style.removeProperty("--k");
-    }
+    nameMark.tint(p ? p.id.replace(/^p-/, "") : null);
   }
 
   panels.forEach((panel) => {
@@ -1396,6 +1285,8 @@ function boot(data) {
     current = to;
     tintName(null);
     to.style.setProperty("--sdir", dir); // which edge leads: it carries the sheet's shadow
+    const sb = stage.getBoundingClientRect(); // (snap() has just laid out: no extra cost)
+    desk.pulse(dir === 1 ? sb.right : sb.left, sb.top + sb.height / 2, 0.7);
     stage.classList.add("is-switching");
     showGrid(a.detail, false);
 
@@ -2071,6 +1962,10 @@ function stageIn() {
   if (document.body.classList.contains("is-staged")) return;
   document.body.classList.add("is-staged");
   const stage = document.getElementById("stage");
+  // the sheets have landed: one wave out from where the four meet
+  desk.settle();
+  const sb = stage.getBoundingClientRect();
+  desk.pulse(sb.left + sb.width / 2, sb.top + sb.height / 2, 0.6);
   stage.classList.add("is-arriving");
   requestAnimationFrame(() =>
     requestAnimationFrame(() => stage.classList.remove("is-preintro")),
