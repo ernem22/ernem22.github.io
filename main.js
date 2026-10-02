@@ -497,15 +497,17 @@ function mountName(nameEl, glyphs = []) {
   const text = nameEl.textContent.trim();
   let i = 0;
   const letters = [...text]
-    .map((c) =>
-      c === " "
-        ? '<span class="sp"></span>'
-        : `<span class="l" style="--i:${i++}">${esc(c)}</span>`,
-    )
+    .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
     .join("");
+  // The extrusion: the name again, stepped down and to the right. Twelve thin
+  // layers in four runs, one run per section, each filled with that section's
+  // own ground (the panels' gradient, run across the whole name), then a cherry
+  // base. Thin steps read as one smooth slab, not as bands.
+  const flat = [...text].map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="g">${esc(c)}</span>`)).join("");
+  const stack = Array.from({ length: 14 }, (_, n) => `<i class="sh" style="--n:${n + 1}" data-g="${n < 12 ? Math.floor(n / 3) + 1 : "b"}">${flat}</i>`).join("");
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
+    `<span class="plate" aria-hidden="true"><span class="ink"><span class="stack">${stack}</span>${letters}</span>` +
     `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"><b>${esc(glyphs[n] || "")}</b></i>`).join("")}</span></span>`;
   const cells = [...nameEl.querySelectorAll(".mark i")];
 
@@ -516,14 +518,14 @@ function mountName(nameEl, glyphs = []) {
       if (key) {
         // --lk outlives the hover, so the marker retracts in the colour it came in
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
-        nameEl.style.setProperty("--k", `var(--acc-${key})`); // floods every layer of the extrusion
+        nameEl.style.setProperty("--lg", `var(--g-${key})`); // floods every layer of the extrusion
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
           nameEl.classList.remove("is-lit");
-          nameEl.style.removeProperty("--k");
+          nameEl.style.removeProperty("--lg");
           cells.forEach((c) => c.classList.remove("is-on"));
         }, 140);
       }

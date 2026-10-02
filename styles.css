@@ -93,7 +93,7 @@ button { font: inherit; color: inherit; }
 /* ──────────────────────────────────────────────────────────────
    Masthead
    The name in Orbitron, extruded in the four section colours with a cherry
-   base under them, the stack falling down and to the right; hovering or opening a section floods every layer with its colour.
+   base under them, the stack falling down and to the right; hovering or opening a section floods every layer with its ground.
    The four-quadrant mark is the caret after it: each quadrant a section's
    own ground — gradient, a lit top edge, a shaded foot, the boot tile's
    glyph — the hovered (or open) one comes online and lifts. At rest the
@@ -107,14 +107,15 @@ button { font: inherit; color: inherit; }
   /* by width, and by height too: a phone on its side keeps its room for the stage */
   --fs: round(clamp(1.9rem, min(6.2vw, 12vh), 5.6rem), 1px);
   --lw: max(2px, calc(var(--fs) * .03));
-  --n1: var(--k, var(--acc-info));
-  --n2: var(--k, var(--acc-projects));
-  --n3: var(--k, var(--acc-tech));
-  --n4: var(--k, var(--acc-contact));
+  --g1: var(--lg, var(--g-info));
+  --g2: var(--lg, var(--g-projects));
+  --g3: var(--lg, var(--g-tech));
+  --g4: var(--lg, var(--g-contact));
   position: relative;
   display: inline-block;
   margin: 0;
   font-family: var(--display);
+  font-kerning: none;                      /* the layers are one string, the face is letter by letter: keep them in step */
   font-weight: 600;
   font-size: var(--fs);
   line-height: .9;
@@ -122,17 +123,10 @@ button { font: inherit; color: inherit; }
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--cherry);
-  /* four colour bands (one per section) and a cherry base under them */
-  text-shadow:
-    .0245em .0245em 0 var(--n1),
-    .049em  .049em  0 var(--n2),
-    .0735em .0735em 0 var(--n3),
-    .098em  .098em  0 var(--n4),
-    .1155em .1155em 0 var(--cherry);
   /* steps back while a section is open: transform only, on the sheet's own
      timing (--nt, set by JS for opening / closing) */
   transform-origin: 50% 0;
-  transition: scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1)), text-shadow .5s linear;
+  transition: scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1));
   contain: layout style;
 }
 .name.is-small { scale: var(--name-k, .5); }
@@ -149,9 +143,31 @@ button { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: .2em;
-  padding-right: calc(var(--fs) * .17);    /* the stack hangs off the right: balance it */
+  padding-right: calc(var(--fs) * .125);   /* the stack hangs off the right: balance it */
 }
-.name .ink { display: inline-block; }
+.name .ink { position: relative; display: inline-block; }
+/* the extrusion: see mountName — twelve thin layers in four section grounds,
+   then a cherry base, all under the cherry face */
+.name .stack { isolation: isolate; position: absolute; inset: 0; pointer-events: none; user-select: none; opacity: 0; transition: opacity .6s var(--ease-soft) .75s; }
+body.is-ready .name .stack { opacity: 1; }
+.name .sh {
+  --d: .0085em;
+  position: absolute;
+  inset: 0;
+  font-style: normal;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  translate: calc(var(--n) * var(--d)) calc(var(--n) * var(--d));
+  z-index: calc(20 - var(--n));            /* the nearer layer is the one on top */
+}
+.name .sh[data-g="1"] { background-image: var(--g1); }
+.name .sh[data-g="2"] { background-image: var(--g2); }
+.name .sh[data-g="3"] { background-image: var(--g3); }
+.name .sh[data-g="4"] { background-image: var(--g4); }
+.name .sh[data-g="b"] { background: var(--cherry); background-clip: text; -webkit-background-clip: text; }
+.name .g { display: inline-block; }   /* the layers' letters sit exactly where the face's do */
+.name .l { position: relative; }
 
 /* letters set in like the corner type once the boot screen lifts: up from
    below, 45ms apart */
