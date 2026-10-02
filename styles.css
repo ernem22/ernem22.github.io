@@ -16,6 +16,7 @@
   --serif: "Instrument Serif", "Times New Roman", serif;
   --desk: #eadfcb;                 /* the page itself: a warm desk the sheets lie on */
   --sans: "Inter Tight", system-ui, sans-serif;
+  --display: "Orbitron", "Arial Narrow", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
   /* section accents: each panel's fill, and the four bands of the name */
   --acc-info: #f6cf72;
@@ -91,37 +92,52 @@ button { font: inherit; color: inherit; }
 
 /* ──────────────────────────────────────────────────────────────
    Masthead
+   The name in Orbitron, extruded in the four section colours with a cherry
+   base under them, the stack cast away from the pointer like a light
+   source; hovering or opening a section floods every layer with its colour.
+   The four-quadrant mark is the caret after it: each quadrant a section's
+   own ground — gradient, a lit top edge, a shaded foot, the boot tile's
+   glyph — the hovered (or open) one comes online and lifts. At rest the
+   quadrants come online in turn.
    ────────────────────────────────────────────────────────────── */
-/* The name in the site's mono, centred, with the site's caret after it. The
-   caret is four cells, one per section; the hovered (or open) section's cell
-   takes its accent, and the same accent is swept under the name as a marker
-   (the Contact address's highlight). --lk is set by JS and outlives the hover,
-   so the marker retracts in the colour it came in. */
 .masthead {
   text-align: center;
-  padding: round(clamp(4px, 1vh, 12px), 1px) 0 round(clamp(6px, 1vh, 12px), 1px);
+  padding: round(clamp(4px, 1vh, 12px), 1px) 0 round(clamp(8px, 1.2vh, 14px), 1px);
 }
 .name {
   /* by width, and by height too: a phone on its side keeps its room for the stage */
-  --fs: round(clamp(2.2rem, min(6vw, 11vh), 5.6rem), 1px);
+  --fs: round(clamp(1.9rem, min(6.2vw, 12vh), 5.6rem), 1px);
+  --lw: max(2px, calc(var(--fs) * .03));
+  --vx: .7;
+  --vy: .7;
+  --n1: var(--k, var(--acc-info));
+  --n2: var(--k, var(--acc-projects));
+  --n3: var(--k, var(--acc-tech));
+  --n4: var(--k, var(--acc-contact));
   position: relative;
-  display: inline-flex;
-  align-items: baseline;
+  display: inline-block;
   margin: 0;
-  /* optical centre: the caret hangs off the right end — shift by half of it */
-  margin-left: calc(var(--fs) * .6);
-  font-family: var(--mono);
+  font-family: var(--display);
   font-weight: 600;
   font-size: var(--fs);
-  line-height: 1;
-  letter-spacing: -.045em;
+  line-height: .9;
+  letter-spacing: .12em;
+  text-transform: uppercase;
   white-space: nowrap;
+  color: var(--cherry);
+  /* four colour bands (one per section) and a cherry base under them */
+  text-shadow:
+    calc(var(--vx) * .035em) calc(var(--vy) * .035em) 0 var(--n1),
+    calc(var(--vx) * .07em)  calc(var(--vy) * .07em)  0 var(--n2),
+    calc(var(--vx) * .105em) calc(var(--vy) * .105em) 0 var(--n3),
+    calc(var(--vx) * .14em)  calc(var(--vy) * .14em)  0 var(--n4),
+    calc(var(--vx) * .165em) calc(var(--vy) * .165em) 0 var(--cherry);
   /* leans toward the pointer, the way the scenes' glyphs do */
   translate: calc(var(--mx, 0) * 4px) calc(var(--my, 0) * 2px);
   /* steps back while a section is open: transform only, on the sheet's own
      timing (--nt, set by JS for opening / closing) */
   transform-origin: 50% 0;
-  transition: translate 1.6s var(--ease), scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1));
+  transition: translate 1.6s var(--ease), scale var(--nt, .72s cubic-bezier(.4, 0, .1, 1)), text-shadow .5s linear;
 }
 .name.is-small { scale: var(--name-k, .5); }
 .name .sr {
@@ -132,63 +148,118 @@ button { font: inherit; color: inherit; }
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.name .ink { position: relative; isolation: isolate; }
-.name .ink::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  left: -.03em;
-  right: -.03em;
-  bottom: .04em;
-  height: .28em;
-  background: var(--lk, var(--acc-info));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 1.4s var(--ease), background-color .6s linear;
+.name .plate {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: .2em;
+  padding-right: calc(var(--fs) * .17);    /* the stack hangs off the right: balance it */
 }
-.name.is-lit .ink::before { transform: scaleX(1); }
+.name .ink { display: inline-block; }
 
 /* letters set in like the corner type once the boot screen lifts: up from
    below, 45ms apart */
 .name .l {
   display: inline-block;
   opacity: 0;
-  translate: 0 .16em;
+  translate: 0 .3em;
   transition: opacity .8s var(--ease-soft), translate 1.1s var(--ease);
   transition-delay: calc(var(--i) * 45ms + 150ms);
 }
-.name .sp { display: inline-block; width: .32em; }
+.name .sp { display: inline-block; width: .34em; }
 body.is-ready .name .l { opacity: 1; translate: 0 0; }
 
-/* the caret: one bar, four cells — sized to read even when the name steps back
-   (and on phones), the lit cell filled in its accent and lifted out of the bar */
-.name .caret {
-  --lw: max(1.5px, calc(var(--fs) * .022));
-  display: inline-flex;
-  width: max(.7em, 30px);
-  height: max(.24em, 9px);
-  margin-left: .12em;
-  border: var(--lw) solid var(--cherry);
-  background: var(--cream);
-  box-shadow: 2px 2px 0 var(--cherry);
-  opacity: 0;
-  transition: opacity .4s linear 1s;
-}
-.name .caret i {
+/* the caret: four quadrants, a sticker among the letters */
+.name .mark {
   position: relative;
-  flex: 1;
-  transition: background-color .5s linear, translate .55s var(--ease), box-shadow .55s var(--ease);
+  flex: none;
+  width: .74em;
+  height: .74em;
+  margin-top: .04em;
+  display: grid;
+  grid-template: 1fr 1fr / 1fr 1fr;
+  gap: var(--lw);
+  border: var(--lw) solid var(--cherry);
+  background: var(--cherry);
+  text-shadow: none;
+  box-shadow: calc(var(--fs) * .05) calc(var(--fs) * .06) 0 var(--cherry);
+  rotate: -5deg;
+  transform-origin: 50% 80%;
+  opacity: 0;
+  scale: .5;
+  transition: opacity .5s linear, scale .9s var(--ease), rotate .9s var(--ease);
 }
-.name .caret i + i { border-left: var(--lw) solid var(--cherry); }
-.name .caret i.is-on {
+.name .mark::after {                       /* the paper's grain, over all four */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: .5;
+  background: url("assets/grain.png") 0 0 / 128px 128px;
+  background-image: image-set(url("assets/grain.avif") type("image/avif"), url("assets/grain.png") type("image/png"));
+}
+/* the mark waits for the boot tiles: they fly in and become it (body.is-marked) */
+body.is-marked .name .mark { opacity: 1; scale: 1; transition-delay: 760ms; }
+body.is-swap .name .mark { transition: opacity .3s linear; }   /* the flight did the arriving: just take over */
+body.is-marked .name.is-lit .mark { rotate: 3deg; transition-delay: 0s; }
+.name .mark i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  background: var(--g);
+  box-shadow: inset 0 calc(var(--fs) * .02) 0 rgba(255, 255, 255, .6), inset 0 calc(var(--fs) * -.024) 0 rgba(134, 16, 36, .2);
+  transition: translate .55s var(--ease), scale .55s var(--ease), box-shadow .55s var(--ease);
+}
+.name .mark i[data-k="info"] { --g: var(--g-info); }
+.name .mark i[data-k="projects"] { --g: var(--g-projects); }
+.name .mark i[data-k="tech"] { --g: var(--g-tech); }
+.name .mark i[data-k="contact"] { --g: var(--g-contact); }
+.name .mark i b {                          /* the glyph, as on the boot tiles */
+  position: relative;
   z-index: 1;
-  background: var(--lk);
-  translate: 0 -45%;
-  box-shadow: 0 0 0 var(--lw) var(--cherry), 2px 2px 0 var(--lw) var(--cherry);
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: .17em;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cherry);
+  opacity: .42;
+  transition: opacity .4s linear;
 }
-body.is-ready .name .caret { opacity: 1; animation: caret-blink 1.1s steps(1) 1.4s infinite; }
-/* lit, it holds still: it's showing where you are */
-body.is-ready .name.is-lit .caret { animation: none; }
+.name .mark i::before {                    /* the cream veil: offline until it's lit */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--cream);
+  opacity: .5;
+  transition: opacity .5s var(--ease-soft);
+}
+/* at rest the quadrants come online one after another, like the boot tiles */
+body.is-ready .name:not(.is-lit) .mark i::before {
+  animation: mark-scan 4.8s var(--ease-soft) infinite;
+  animation-delay: calc(var(--n) * 1.2s - 3.6s);
+}
+body.is-ready .name:not(.is-lit) .mark i b {
+  animation: mark-glyph 4.8s var(--ease-soft) infinite;
+  animation-delay: calc(var(--n) * 1.2s - 3.6s);
+}
+@keyframes mark-scan { 0%, 18% { opacity: 0; } 30%, 100% { opacity: .5; } }
+@keyframes mark-glyph { 0%, 18% { opacity: 1; } 30%, 100% { opacity: .42; } }
+.name.is-lit .mark i.is-on {
+  z-index: 2;
+  translate: -9% -9%;
+  scale: 1.1;
+  box-shadow: 0 0 0 var(--lw) var(--cherry), calc(var(--fs) * .04) calc(var(--fs) * .04) 0 var(--lw) var(--cherry), inset 0 calc(var(--fs) * .02) 0 rgba(255, 255, 255, .6), inset 0 calc(var(--fs) * -.024) 0 rgba(134, 16, 36, .2);
+}
+.name.is-lit .mark i.is-on::before { opacity: 0; }
+.name.is-lit .mark i.is-on b { opacity: 1; }
+@media (max-width: 640px) {
+  .name { --fs: round(clamp(1.6rem, 8.2vw, 2.8rem), 1px); letter-spacing: .09em; }
+  .name .mark i b { display: none; }
+}
 .d-body:focus-visible, .d-body pre:focus-visible { outline: var(--bw) dashed var(--cherry); outline-offset: 3px; }
 @keyframes caret-blink { 50% { opacity: 0; } }
 
@@ -2474,7 +2545,7 @@ a.soon { cursor: default; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .name .caret { animation: none !important; }
+  .name .mark i::before, .name .mark i b { animation: none !important; }
   .name .l { translate: 0 0 !important; }
   /* boot screen: no motion, just the four tiles already in place */
   .boot-q, .boot-q .sym, .boot-stage::after, .boot-bar i::before, .boot-caret,

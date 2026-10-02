@@ -486,33 +486,59 @@ const CLOSE = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   Name — set in the site's mono, with the site's caret after it.
-   The caret is cut into four cells, one per section, in section order;
-   the hovered (or open) section's cell takes its accent, and the same
-   accent is swept under the name as a marker — the Contact address's
-   highlight, brought up to the masthead.
+   Name — the masthead: the favicon grown into a nameplate (cream on a cherry block) and a four-quadrant caret (one
+   quadrant per section, in section order, each with its boot-tile glyph).
+   The hovered (or open) section's quadrant comes online and lifts, and its
+   accent is swept under the name as a highlighter — the Contact address's
+   marker, brought up to the masthead. At rest the quadrants scan in turn.
    ────────────────────────────────────────────────────────────── */
 const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
-function mountName(nameEl) {
+function mountName(nameEl, glyphs = []) {
   const text = nameEl.textContent.trim();
   let i = 0;
   const letters = [...text]
-    .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
+    .map((c) =>
+      c === " "
+        ? '<span class="sp"></span>'
+        : `<span class="l" style="--i:${i++}">${esc(c)}</span>`,
+    )
     .join("");
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="ink" aria-hidden="true">${letters}</span>` +
-    `<span class="caret" aria-hidden="true">${SECTION_KEYS.map((k) => `<i data-k="${k}"></i>`).join("")}</span>`;
-  const cells = [...nameEl.querySelectorAll(".caret i")];
+    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
+    `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"><b>${esc(glyphs[n] || "")}</b></i>`).join("")}</span></span>`;
+  const cells = [...nameEl.querySelectorAll(".mark i")];
 
   // leans toward the pointer a few pixels, the way the scenes' glyphs do
+  let castRaf = 0,
+    px = 0,
+    py = 0,
+    lx = "",
+    ly = "";
+  const cast = () => {
+    castRaf = 0;
+    const r = nameEl.getBoundingClientRect();
+    const dx = r.left + r.width / 2 - px,
+      dy = r.top + r.height / 2 - py;
+    const d = Math.hypot(dx, dy) || 1;
+    // the stack always falls down-right; the pointer only swings it within that quadrant
+    const clamp = (v) => Math.min(1, Math.max(0.3, v));
+    const vx = clamp(0.65 + (dx / d) * 0.45).toFixed(2),
+      vy = clamp(0.8 + (dy / d) * 0.35).toFixed(2);
+    if (vx !== lx) nameEl.style.setProperty("--vx", (lx = vx));
+    if (vy !== ly) nameEl.style.setProperty("--vy", (ly = vy));
+  };
   addEventListener(
       "pointermove",
       (e) => {
         if (reduced || e.pointerType !== "mouse") return; // a finger scrolling isn't a pointer to lean to
         nameEl.style.setProperty("--mx", ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
         nameEl.style.setProperty("--my", ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
+        // the extrusion is cast away from the pointer, like a light source
+        px = e.clientX;
+        py = e.clientY;
+        if (!castRaf) castRaf = requestAnimationFrame(cast);
       },
       { passive: true },
     );
@@ -524,12 +550,14 @@ function mountName(nameEl) {
       if (key) {
         // --lk outlives the hover, so the marker retracts in the colour it came in
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
+        nameEl.style.setProperty("--k", `var(--acc-${key})`); // floods every layer of the extrusion
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
           nameEl.classList.remove("is-lit");
+          nameEl.style.removeProperty("--k");
           cells.forEach((c) => c.classList.remove("is-on"));
         }, 140);
       }
@@ -828,7 +856,7 @@ const desk = mountDesk();
 function boot(data) {
   const stage = document.getElementById("stage");
   const nameEl = document.querySelector(".name");
-  const nameMark = mountName(nameEl);
+  const nameMark = mountName(nameEl, data.panels.map((p) => p.detail?.symbol || ""));
   // When the desk's wave starts. With a mouse it rides along with the sheet; on a
   // touch screen (phones, mostly) it waits for the sheet to land, so the two never
   // share frames and the opening itself keeps every one of them — the wave reads
@@ -2083,6 +2111,40 @@ function handoff() {
   });
 }
 
+// The second flight: the tiles don't dissolve, they become the masthead's mark.
+// Each one shrinks from its quadrant to the spot of its cell in the caret —
+// measured from layout, so the mark's tilt is counted — and when they land the
+// real mark takes over. Returns null where there's nothing to fly to.
+function toMark() {
+  const mark = document.querySelector(".name .mark");
+  const plate = mark?.parentElement;
+  const cells = mark ? [...mark.children] : [];
+  if (reduced || !plate || cells.length !== bootTiles.length) return null;
+  const pr = plate.getBoundingClientRect();
+  const ang = parseFloat(getComputedStyle(mark).rotate) || 0; // the tilt it will rest at, in degrees
+  const rad = (ang * Math.PI) / 180;
+  // the mark turns about 50% 80% of itself
+  const ox = pr.left + mark.offsetLeft + mark.offsetWidth * 0.5;
+  const oy = pr.top + mark.offsetTop + mark.offsetHeight * 0.8;
+  const box = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  return bootTiles.map((t, i) => {
+    const c = cells[i];
+    const w = c.offsetWidth,
+      h = c.offsetHeight;
+    const dx = pr.left + mark.offsetLeft + c.offsetLeft + w / 2 - ox;
+    const dy = pr.top + mark.offsetTop + c.offsetTop + h / 2 - oy;
+    const cx = ox + dx * Math.cos(rad) - dy * Math.sin(rad);
+    const cy = oy + dx * Math.sin(rad) + dy * Math.cos(rad);
+    return t.animate(
+      [
+        { ...box(t.getBoundingClientRect()), transform: "none" },
+        { ...box({ left: cx - w / 2, top: cy - h / 2, width: w, height: h }), transform: `rotate(${ang}deg)` },
+      ],
+      { duration: 1050, delay: 260 + i * 70, easing: "cubic-bezier(.7,0,.16,1)", fill: "forwards" }, // a beat on the quadrants first
+    );
+  });
+}
+
 // The stage is revealed under the landed tiles; its scenes and type set in.
 function stageIn() {
   if (document.body.classList.contains("is-staged")) return;
@@ -2104,29 +2166,45 @@ function finishBoot() {
   bootDone = true;
   if (bootLog) bootLog.textContent = UI.ready || "ready";
   document.body.classList.add("is-ready"); // releases the name's intro
-  if (!bootEl) return stageIn();
+  if (!bootEl) {
+    document.body.classList.add("is-marked");
+    return stageIn();
+  }
   const gone = () => bootEl.remove();
+  // the real mark takes over from the tiles that became it
+  const settle = () => {
+    document.body.classList.add("is-marked", "is-swap");
+    setTimeout(() => document.body.classList.remove("is-swap"), 500);
+    const fades = bootTiles.map((t) =>
+      t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "linear", fill: "forwards" }),
+    );
+    Promise.all(fades.map((f) => f.finished)).then(gone, gone);
+  };
   const flights = handoff();
   if (flights) {
     const land = () => {
-      stageIn();
-      // colour for colour over the stage now: dissolve onto it
-      const fades = bootTiles.map((t) =>
-        t.animate([{ opacity: 1 }, { opacity: 0 }], {
-          duration: 520,
-          easing: "cubic-bezier(.3,0,.2,1)",
-          fill: "forwards",
-        }),
-      );
-      Promise.all(fades.map((f) => f.finished)).then(gone, gone);
+      stageIn(); // the content comes up as the tiles leave their quadrants
+      const home = toMark();
+      if (!home) {
+        // nowhere to fly to: dissolve onto the stage, colour for colour
+        document.body.classList.add("is-marked");
+        const fades = bootTiles.map((t) =>
+          t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, easing: "cubic-bezier(.3,0,.2,1)", fill: "forwards" }),
+        );
+        Promise.all(fades.map((f) => f.finished)).then(gone, gone);
+        return;
+      }
+      Promise.all(home.map((f) => f.finished)).then(settle, settle);
     };
     Promise.all(flights.map((f) => f.finished)).then(land, land);
     setTimeout(() => {
       stageIn();
+      document.body.classList.add("is-marked");
       gone();
-    }, 3000); // safety
+    }, 4800); // safety
     return;
   }
+  document.body.classList.add("is-marked");
   stageIn();
   bootEl.classList.add("is-done");
   bootEl.addEventListener("transitionend", (e) => {
