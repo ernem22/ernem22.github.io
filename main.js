@@ -486,55 +486,32 @@ const CLOSE = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   Name — the masthead's nameplate: the name (serif first name, mono
-   surname), a four-quadrant mark in section order, and a dateline with the
-   role, the place and a live clock. The hovered (or open) section's
-   quadrant comes online and its accent is swept under the name as a
-   highlighter — the Contact address's marker, brought up to the masthead —
-   and registered behind the letters. At rest the quadrants scan in turn.
+   Name — the masthead. The first word is set as keycap tiles, cycling
+   through the four sections in section order (for "Eren" that's exactly
+   one tile per section); the rest is sticker lettering. The hovered (or
+   open) section's tile lifts off the row and comes online, and its accent
+   is swept under the whole name as a highlighter — the Contact address's
+   marker, brought up to the masthead. At rest the tiles scan in turn.
    ────────────────────────────────────────────────────────────── */
 const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
-function mountName(nameEl, site = {}, labels = []) {
+function mountName(nameEl) {
   const text = nameEl.textContent.trim();
-  const split = text.indexOf(" "); // before it: the serif first name
-  let i = 0;
-  const letters = [...text]
-    .map((c, n) =>
-      c === " "
-        ? '<span class="sp"></span>'
-        : `<span class="l ${split < 0 || n < split ? "f" : "r"}" style="--i:${i++}">${esc(c)}</span>`,
-    )
+  const split = text.indexOf(" ");
+  const first = split < 0 ? text : text.slice(0, split);
+  const rest = split < 0 ? "" : text.slice(split + 1);
+  const tiles = [...first]
+    .map((c, n) => `<i class="tile" data-k="${SECTION_KEYS[n % SECTION_KEYS.length]}" style="--n:${n}"><b>${esc(c)}</b></i>`)
     .join("");
-  const dateline = site.role
-    ? `<span class="dateline" aria-hidden="true"><span>${esc(site.role)}</span><span class="run"></span><i class="lead"></i>` +
-      (site.based ? `<span>${esc(site.based)}</span>` : "") +
-      (site.timezone ? '<i class="pip"></i><b class="clk">--:--:--</b>' : "") +
-      "</span>"
-    : "";
+  const letters = [...rest]
+    .map((c, n) => (c === " " ? " " : `<span class="l" style="--i:${n + first.length}">${esc(c)}</span>`))
+    .join("");
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
-    `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"></i>`).join("")}</span></span>` +
-    dateline;
-  const cells = [...nameEl.querySelectorAll(".mark i")];
-  const run = nameEl.querySelector(".run");
-
-  // the dateline's clock, in the site's own time zone
-  const clk = nameEl.querySelector(".clk");
-  if (clk) {
-    let fmt;
-    try {
-      fmt = new Intl.DateTimeFormat("en-GB", { timeZone: site.timezone, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-    } catch {
-      clk.remove();
-    }
-    if (fmt) {
-      const tick = () => (clk.textContent = fmt.format(new Date()));
-      tick();
-      setInterval(tick, 1000);
-    }
-  }
+    `<span class="plate" aria-hidden="true"><span class="tiles">${tiles}</span>` +
+    (letters ? `<span class="ink">${letters}</span>` : "") +
+    "</span>";
+  const cells = [...nameEl.querySelectorAll(".tile")];
 
   // leans toward the pointer a few pixels, the way the scenes' glyphs do
   addEventListener(
@@ -556,9 +533,6 @@ function mountName(nameEl, site = {}, labels = []) {
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
-        // the running head keeps its words while it retracts
-        const label = labels[SECTION_KEYS.indexOf(key)];
-        if (run && label) run.textContent = label;
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
@@ -861,7 +835,7 @@ const desk = mountDesk();
 function boot(data) {
   const stage = document.getElementById("stage");
   const nameEl = document.querySelector(".name");
-  const nameMark = mountName(nameEl, data.site, data.panels.map((p) => p.face?.index || ""));
+  const nameMark = mountName(nameEl);
   // When the desk's wave starts. With a mouse it rides along with the sheet; on a
   // touch screen (phones, mostly) it waits for the sheet to land, so the two never
   // share frames and the opening itself keeps every one of them — the wave reads
