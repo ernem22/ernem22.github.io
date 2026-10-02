@@ -486,7 +486,7 @@ const CLOSE = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   Name — the masthead: sticker lettering and a four-quadrant mark (one
+   Name — the masthead: the favicon grown into a nameplate (cream on a cherry block) and a four-quadrant caret (one
    quadrant per section, in section order, each with its boot-tile glyph).
    The hovered (or open) section's quadrant comes online and lifts, and its
    accent is swept under the name as a highlighter — the Contact address's
@@ -501,7 +501,7 @@ function mountName(nameEl, glyphs = []) {
     .map((c) =>
       c === " "
         ? '<span class="sp"></span>'
-        : `<span class="l" style="--i:${i++}" data-c="${esc(c)}">${esc(c)}</span>`,
+        : `<span class="l" style="--i:${i++}">${esc(c)}</span>`,
     )
     .join("");
   nameEl.innerHTML =
