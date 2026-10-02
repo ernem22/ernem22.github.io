@@ -486,32 +486,29 @@ const CLOSE = {
 };
 
 /* ──────────────────────────────────────────────────────────────
-   Name — the masthead. The first word is set as keycap tiles, cycling
-   through the four sections in section order (for "Eren" that's exactly
-   one tile per section); the rest is sticker lettering. The hovered (or
-   open) section's tile lifts off the row and comes online, and its accent
-   is swept under the whole name as a highlighter — the Contact address's
-   marker, brought up to the masthead. At rest the tiles scan in turn.
+   Name — the masthead: sticker lettering and a four-quadrant mark (one
+   quadrant per section, in section order, each with its boot-tile glyph).
+   The hovered (or open) section's quadrant comes online and lifts, and its
+   accent is swept under the name as a highlighter — the Contact address's
+   marker, brought up to the masthead. At rest the quadrants scan in turn.
    ────────────────────────────────────────────────────────────── */
 const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
-function mountName(nameEl) {
+function mountName(nameEl, glyphs = []) {
   const text = nameEl.textContent.trim();
-  const split = text.indexOf(" ");
-  const first = split < 0 ? text : text.slice(0, split);
-  const rest = split < 0 ? "" : text.slice(split + 1);
-  const tiles = [...first]
-    .map((c, n) => `<i class="tile" data-k="${SECTION_KEYS[n % SECTION_KEYS.length]}" style="--n:${n}"><b>${esc(c)}</b></i>`)
-    .join("");
-  const letters = [...rest]
-    .map((c, n) => (c === " " ? " " : `<span class="l" style="--i:${n + first.length}">${esc(c)}</span>`))
+  let i = 0;
+  const letters = [...text]
+    .map((c) =>
+      c === " "
+        ? '<span class="sp"></span>'
+        : `<span class="l" style="--i:${i++}" data-c="${esc(c)}">${esc(c)}</span>`,
+    )
     .join("");
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="plate" aria-hidden="true"><span class="tiles">${tiles}</span>` +
-    (letters ? `<span class="ink">${letters}</span>` : "") +
-    "</span>";
-  const cells = [...nameEl.querySelectorAll(".tile")];
+    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
+    `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"><b>${esc(glyphs[n] || "")}</b></i>`).join("")}</span></span>`;
+  const cells = [...nameEl.querySelectorAll(".mark i")];
 
   // leans toward the pointer a few pixels, the way the scenes' glyphs do
   addEventListener(
@@ -835,7 +832,7 @@ const desk = mountDesk();
 function boot(data) {
   const stage = document.getElementById("stage");
   const nameEl = document.querySelector(".name");
-  const nameMark = mountName(nameEl);
+  const nameMark = mountName(nameEl, data.panels.map((p) => p.detail?.symbol || ""));
   // When the desk's wave starts. With a mouse it rides along with the sheet; on a
   // touch screen (phones, mostly) it waits for the sheet to land, so the two never
   // share frames and the opening itself keeps every one of them — the wave reads

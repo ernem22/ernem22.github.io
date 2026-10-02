@@ -91,14 +91,15 @@ button { font: inherit; color: inherit; }
 
 /* ──────────────────────────────────────────────────────────────
    Masthead
-   One face, the site's mono, set as objects rather than ink. "Eren" is four
-   keycap tiles — one per section, each in that section's own ground (gradient
-   + grain), the letter pressed into it. "Macit" is sticker lettering: paper
-   face, ink outline, a solid extruded slab. The hovered (or open) section's
-   tile lifts off the row and comes online while the others sit back, and its
-   accent is swept under the whole name like a highlighter (the Contact
-   address's marker). --lk is set by JS and outlives the hover, so the marker
-   retracts in the colour it came in.
+   Sticker lettering with a real slab, and a four-quadrant mark for a cursor.
+   Light comes from the top left, as in the scenes: the letters' paper face
+   shades from bright to warm, the slab behind them steps from a lit cherry to
+   a dark one, the mark's quadrants carry a lit top edge and a shaded bottom,
+   and the mark's slab is built the same way — so name and mark are one
+   object. The hovered (or open) section's quadrant comes online and lifts,
+   and its accent is swept under the name like the Contact address's marker.
+   --lk is set by JS and outlives the hover, so the marker retracts in the
+   colour it came in.
    ────────────────────────────────────────────────────────────── */
 .masthead {
   text-align: center;
@@ -106,18 +107,18 @@ button { font: inherit; color: inherit; }
 }
 .name {
   /* by width, and by height too: a phone on its side keeps its room for the stage */
-  --fs: round(clamp(2.4rem, min(8.4vw, 14vh), 7rem), 1px);
+  --fs: round(clamp(2.6rem, min(9.6vw, 15vh), 7.8rem), 1px);
   --lw: max(2px, calc(var(--fs) * .028));
-  --ex: calc(var(--fs) * .006);            /* one step of the extrusion (14 of them: a smooth slab) */
+  --ex: calc(var(--fs) * .0048);           /* one step of the slab (14 of them) */
+  --nf: var(--serif);
   position: relative;
   display: inline-block;
-  margin: 0;
-  font-family: var(--mono);
-  font-weight: 600;
+  margin: 0 0 -.28em;                      /* the line box is taller than the type: take the slack back */
+  font-family: var(--nf);
+  font-weight: 400;
   font-size: var(--fs);
   line-height: 1;
-  letter-spacing: -.03em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   white-space: nowrap;
   /* leans toward the pointer, the way the scenes' glyphs do */
   translate: calc(var(--mx, 0) * 4px) calc(var(--my, 0) * 2px);
@@ -137,144 +138,175 @@ button { font: inherit; color: inherit; }
 }
 .name .plate {
   position: relative;
-  isolation: isolate;
   display: inline-flex;
   align-items: baseline;
-  gap: .3em;
-  padding-right: calc(var(--ex) * 14);      /* the slab hangs off the right: balance it */
+  gap: .22em;
+  padding-right: calc(var(--ex) * 14);     /* the slab hangs off the right: balance it */
 }
-.name .tiles { display: inline-flex; align-items: baseline; gap: .1em; }
 
-/* the highlighter, under the whole name */
+/* the highlighter, the Contact address's way: a flat band across the foot of
+   the letters, behind the type, so they stand a little over it */
 .name .plate::before {
   content: "";
   position: absolute;
   z-index: -1;
-  left: -.05em;
-  right: -.02em;
-  bottom: -.04em;
-  height: .3em;
+  left: 0;
+  right: 0;
+  bottom: .36em;
+  height: .32em;
   background: var(--lk, var(--acc-info));
-  mix-blend-mode: multiply;               /* the ink shows through it */
-  clip-path: polygon(0 14%, 1.6% 0, 100% 9%, 98.8% 100%, .8% 91%);
-  rotate: -.5deg;
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 1.4s var(--ease), background-color .6s linear;
 }
 .name.is-lit .plate::before { transform: scaleX(1); }
+.name .ink { position: relative; isolation: isolate; display: inline-block; }
 
-/* the tiles: keycaps — the section's ground, a lit top edge, the letter pressed in */
-.name .tile {
-  --g: var(--g-info);
+/* letters: the real glyph only holds the place; the slab and the face are
+   drawn from data-c, so the face can be a gradient and the slab a ramp */
+.name .l {
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  opacity: 0;
+  translate: 0 .16em;
+  transition: opacity .8s var(--ease-soft), translate 1.1s var(--ease);
+  transition-delay: calc(var(--i) * 45ms + 150ms);
+}
+.name .l::before,
+.name .l::after {
+  content: attr(data-c);
+  position: absolute;
+  inset: 0;
+  letter-spacing: inherit;
+}
+.name .l::before {                         /* outline, then the slab */
+  z-index: -1;
+  color: var(--cherry);
+  text-shadow:
+    calc(var(--fs) * 0.014) calc(var(--fs) * 0.014) 0 var(--cherry),
+    calc(var(--fs) * -0.014) calc(var(--fs) * 0.014) 0 var(--cherry),
+    calc(var(--fs) * 0.014) calc(var(--fs) * -0.014) 0 var(--cherry),
+    calc(var(--fs) * -0.014) calc(var(--fs) * -0.014) 0 var(--cherry),
+    calc(var(--fs) * 0.018) calc(var(--fs) * 0) 0 var(--cherry),
+    calc(var(--fs) * -0.018) calc(var(--fs) * 0) 0 var(--cherry),
+    calc(var(--fs) * 0) calc(var(--fs) * 0.018) 0 var(--cherry),
+    calc(var(--fs) * 0) calc(var(--fs) * -0.018) 0 var(--cherry),
+    calc(var(--ex) * 1) calc(var(--ex) * 1) 0 #ab1d38,
+    calc(var(--ex) * 2) calc(var(--ex) * 2) 0 #a31b35,
+    calc(var(--ex) * 3) calc(var(--ex) * 3) 0 #9b1932,
+    calc(var(--ex) * 4) calc(var(--ex) * 4) 0 #93172f,
+    calc(var(--ex) * 5) calc(var(--ex) * 5) 0 #8b152c,
+    calc(var(--ex) * 6) calc(var(--ex) * 6) 0 #831329,
+    calc(var(--ex) * 7) calc(var(--ex) * 7) 0 #7b1126,
+    calc(var(--ex) * 8) calc(var(--ex) * 8) 0 #740f23,
+    calc(var(--ex) * 9) calc(var(--ex) * 9) 0 #6c0e20,
+    calc(var(--ex) * 10) calc(var(--ex) * 10) 0 #650c1d,
+    calc(var(--ex) * 11) calc(var(--ex) * 11) 0 #5e0b1b,
+    calc(var(--ex) * 12) calc(var(--ex) * 12) 0 #580a19,
+    calc(var(--ex) * 13) calc(var(--ex) * 13) 0 #520917,
+    calc(var(--ex) * 14) calc(var(--ex) * 14) 0 #4c0815;
+}
+.name .l::after {                          /* the paper face, lit from the top */
+  color: transparent;
+  background: linear-gradient(180deg, #fffdf7 0%, var(--paper) 38%, #f3e6cb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.name .sp { display: inline-block; width: .2em; }
+body.is-ready .name .l { opacity: 1; translate: 0 0; }
+
+/* the mark: four quadrants, each a section's own ground — gradient, grain, a
+   lit top edge, a shaded bottom — with the section's glyph from the boot tiles */
+.name .mark {
   position: relative;
   flex: none;
+  width: .78em;
+  height: .78em;
   display: grid;
-  place-items: center;
-  width: .8em;
-  height: .8em;
-  align-self: baseline;
-  margin-bottom: -.07em;                   /* keycaps sit on the baseline, not above it */
-  font-style: normal;
-  color: var(--cherry);
-  background: var(--g);
+  grid-template: 1fr 1fr / 1fr 1fr;
+  gap: var(--lw);
   border: var(--lw) solid var(--cherry);
+  background: var(--cherry);
   box-shadow:
-    inset 0 calc(var(--fs) * .025) 0 rgba(255, 255, 255, .55),
-    inset 0 calc(var(--fs) * -.03) 0 rgba(134, 16, 36, .16),
-    calc(var(--fs) * .05) calc(var(--fs) * .06) 0 var(--cherry);
-  rotate: var(--r, 0deg);
+    calc(var(--ex) * 2) calc(var(--ex) * 2) 0 #a31b35,
+    calc(var(--ex) * 4) calc(var(--ex) * 4) 0 #93172f,
+    calc(var(--ex) * 6) calc(var(--ex) * 6) 0 #831329,
+    calc(var(--ex) * 8) calc(var(--ex) * 8) 0 #740f23,
+    calc(var(--ex) * 10) calc(var(--ex) * 10) 0 #650c1d,
+    calc(var(--ex) * 12) calc(var(--ex) * 12) 0 #580a19,
+    calc(var(--ex) * 14) calc(var(--ex) * 14) 0 #4c0815;
+  rotate: -5deg;
+  translate: 0 -.46em;                     /* an empty grid's baseline is its middle: lift it onto the line */
+  transform-origin: 50% 80%;
   opacity: 0;
-  translate: calc(var(--fs) * -.08) calc(var(--fs) * -.2);
-  scale: 1.18;
-  transition: opacity .35s linear, translate .8s var(--ease), scale .8s var(--ease), rotate .8s var(--ease), box-shadow .55s var(--ease);
-  transition-delay: calc(var(--n) * 95ms + 120ms);
+  scale: .5;
+  transition: opacity .5s linear, scale .9s var(--ease), rotate .9s var(--ease);
 }
-.name .tile:nth-child(1) { --r: -2.5deg; }
-.name .tile:nth-child(2) { --r: 1.8deg; }
-.name .tile:nth-child(3) { --r: -1.4deg; }
-.name .tile:nth-child(4) { --r: 2.2deg; }
-.name .tile[data-k="projects"] { --g: var(--g-projects); }
-.name .tile[data-k="tech"] { --g: var(--g-tech); }
-.name .tile[data-k="contact"] { --g: var(--g-contact); }
-.name .tile::before {                      /* the paper's grain */
+.name .mark::after {                       /* the paper's grain, over all four */
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 3;
   pointer-events: none;
   mix-blend-mode: multiply;
   opacity: .5;
   background: url("assets/grain.png") 0 0 / 128px 128px;
   background-image: image-set(url("assets/grain.avif") type("image/avif"), url("assets/grain.png") type("image/png"));
 }
-.name .tile::after {                       /* the cream veil: offline until it's lit */
+body.is-ready .name .mark { opacity: 1; scale: 1; transition-delay: 640ms; }
+body.is-ready .name.is-lit .mark { rotate: 3deg; transition-delay: 0s; }
+.name .mark i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  background: var(--g);
+  box-shadow: inset 0 calc(var(--fs) * .022) 0 rgba(255, 255, 255, .6), inset 0 calc(var(--fs) * -.026) 0 rgba(134, 16, 36, .18);
+  transition: translate .55s var(--ease), scale .55s var(--ease), box-shadow .55s var(--ease);
+}
+.name .mark i[data-k="info"] { --g: var(--g-info); }
+.name .mark i[data-k="projects"] { --g: var(--g-projects); }
+.name .mark i[data-k="tech"] { --g: var(--g-tech); }
+.name .mark i[data-k="contact"] { --g: var(--g-contact); }
+.name .mark i b {                          /* the glyph, as on the boot tiles */
+  position: relative;
+  z-index: 1;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: .17em;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--cherry);
+  opacity: .4;
+  transition: opacity .4s linear;
+}
+.name .mark i::before {                    /* the cream veil: offline until it's lit */
   content: "";
   position: absolute;
   inset: 0;
   background: var(--cream);
-  opacity: .42;
+  opacity: .55;
   transition: opacity .5s var(--ease-soft);
 }
-.name .tile b {
-  position: relative;
-  z-index: 1;
-  font-size: .66em;                        /* air around the letter: a keycap, not a block */
-  font-weight: 600;
-  letter-spacing: 0;
-  text-shadow: 0 calc(var(--fs) * .012) 0 rgba(255, 255, 255, .5);   /* pressed in */
-}
-body.is-ready .name .tile { opacity: 1; translate: 0 0; scale: 1; }
-/* at rest the tiles come online one after another, like the boot tiles */
-body.is-ready .name:not(.is-lit) .tile::after {
-  animation: tile-scan 4.8s var(--ease-soft) infinite;
+/* at rest the quadrants come online one after another, like the boot tiles */
+body.is-ready .name:not(.is-lit) .mark i::before {
+  animation: mark-scan 4.8s var(--ease-soft) infinite;
   animation-delay: calc(var(--n) * 1.2s - 3.6s);
 }
-@keyframes tile-scan { 0%, 18% { opacity: 0; } 30%, 100% { opacity: .42; } }
-/* lit: this section's tile lifts off the row, the rest sit back */
-.name.is-lit .tile { transition-delay: 0s; }
-.name.is-lit .tile.is-on {
-  z-index: 2;
-  rotate: 0deg;
-  translate: calc(var(--fs) * -.03) calc(var(--fs) * -.09);
-  box-shadow:
-    inset 0 calc(var(--fs) * .025) 0 rgba(255, 255, 255, .55),
-    inset 0 calc(var(--fs) * -.03) 0 rgba(134, 16, 36, .16),
-    calc(var(--fs) * .085) calc(var(--fs) * .1) 0 var(--cherry);
+body.is-ready .name:not(.is-lit) .mark i b {
+  animation: mark-glyph 4.8s var(--ease-soft) infinite;
+  animation-delay: calc(var(--n) * 1.2s - 3.6s);
 }
-.name.is-lit .tile.is-on::after { opacity: 0; }
-.name.is-lit .tile:not(.is-on)::after { opacity: .62; }
-
-/* "Macit": sticker lettering — paper face, ink outline, a solid slab behind */
-.name .ink {
-  color: var(--paper);
-  -webkit-text-stroke: calc(var(--fs) * .055) var(--cherry);
-  paint-order: stroke fill;
-  text-shadow:
-    calc(var(--ex) * 1) calc(var(--ex) * 1) 0 var(--cherry),
-    calc(var(--ex) * 2) calc(var(--ex) * 2) 0 var(--cherry),
-    calc(var(--ex) * 3) calc(var(--ex) * 3) 0 var(--cherry),
-    calc(var(--ex) * 4) calc(var(--ex) * 4) 0 var(--cherry),
-    calc(var(--ex) * 5) calc(var(--ex) * 5) 0 var(--cherry),
-    calc(var(--ex) * 6) calc(var(--ex) * 6) 0 var(--cherry),
-    calc(var(--ex) * 7) calc(var(--ex) * 7) 0 var(--cherry),
-    calc(var(--ex) * 8) calc(var(--ex) * 8) 0 var(--cherry),
-    calc(var(--ex) * 9) calc(var(--ex) * 9) 0 var(--cherry),
-    calc(var(--ex) * 10) calc(var(--ex) * 10) 0 var(--cherry),
-    calc(var(--ex) * 11) calc(var(--ex) * 11) 0 var(--cherry),
-    calc(var(--ex) * 12) calc(var(--ex) * 12) 0 var(--cherry),
-    calc(var(--ex) * 13) calc(var(--ex) * 13) 0 var(--cherry),
-    calc(var(--ex) * 14) calc(var(--ex) * 14) 0 var(--cherry)
+@keyframes mark-scan { 0%, 18% { opacity: 0; } 30%, 100% { opacity: .55; } }
+@keyframes mark-glyph { 0%, 18% { opacity: 1; } 30%, 100% { opacity: .4; } }
+.name.is-lit .mark i.is-on { z-index: 2; translate: -9% -9%; scale: 1.1; box-shadow: 0 0 0 var(--lw) var(--cherry), calc(var(--fs) * .04) calc(var(--fs) * .04) 0 var(--lw) var(--cherry), inset 0 calc(var(--fs) * .022) 0 rgba(255, 255, 255, .6), inset 0 calc(var(--fs) * -.026) 0 rgba(134, 16, 36, .18); }
+.name.is-lit .mark i.is-on::before { opacity: 0; }
+.name.is-lit .mark i.is-on b { opacity: 1; }
+@media (max-width: 640px) {
+  .name { --fs: round(clamp(2.6rem, min(17vw, 11vh), 4.4rem), 1px); }
+  .name .mark i b { display: none; }
 }
-/* letters set in like the corner type once the boot screen lifts: up from
-   below, 45ms apart */
-.name .l {
-  display: inline-block;
-  opacity: 0;
-  translate: 0 .16em;
-  transition: opacity .8s var(--ease-soft), translate 1.1s var(--ease);
-  transition-delay: calc(var(--i) * 45ms + 520ms);
-}
-body.is-ready .name .l { opacity: 1; translate: 0 0; }
 .d-body:focus-visible, .d-body pre:focus-visible { outline: var(--bw) dashed var(--cherry); outline-offset: 3px; }
 @keyframes caret-blink { 50% { opacity: 0; } }
 
@@ -2560,7 +2592,7 @@ a.soon { cursor: default; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .name .tile::after { animation: none !important; }
+  .name .mark i::before, .name .mark i b { animation: none !important; }
   .name .l { translate: 0 0 !important; }
   /* boot screen: no motion, just the four tiles already in place */
   .boot-q, .boot-q .sym, .boot-stage::after, .boot-bar i::before, .boot-caret,
