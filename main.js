@@ -511,12 +511,34 @@ function mountName(nameEl, glyphs = []) {
   const cells = [...nameEl.querySelectorAll(".mark i")];
 
   // leans toward the pointer a few pixels, the way the scenes' glyphs do
+  let castRaf = 0,
+    px = 0,
+    py = 0,
+    lx = "",
+    ly = "";
+  const cast = () => {
+    castRaf = 0;
+    const r = nameEl.getBoundingClientRect();
+    const dx = r.left + r.width / 2 - px,
+      dy = r.top + r.height / 2 - py;
+    const d = Math.hypot(dx, dy) || 1;
+    // the stack always falls down-right; the pointer only swings it within that quadrant
+    const clamp = (v) => Math.min(1, Math.max(0.3, v));
+    const vx = clamp(0.65 + (dx / d) * 0.45).toFixed(2),
+      vy = clamp(0.8 + (dy / d) * 0.35).toFixed(2);
+    if (vx !== lx) nameEl.style.setProperty("--vx", (lx = vx));
+    if (vy !== ly) nameEl.style.setProperty("--vy", (ly = vy));
+  };
   addEventListener(
       "pointermove",
       (e) => {
         if (reduced || e.pointerType !== "mouse") return; // a finger scrolling isn't a pointer to lean to
         nameEl.style.setProperty("--mx", ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
         nameEl.style.setProperty("--my", ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
+        // the extrusion is cast away from the pointer, like a light source
+        px = e.clientX;
+        py = e.clientY;
+        if (!castRaf) castRaf = requestAnimationFrame(cast);
       },
       { passive: true },
     );
@@ -528,12 +550,14 @@ function mountName(nameEl, glyphs = []) {
       if (key) {
         // --lk outlives the hover, so the marker retracts in the colour it came in
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
+        nameEl.style.setProperty("--k", `var(--acc-${key})`); // floods every layer of the extrusion
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
           nameEl.classList.remove("is-lit");
+          nameEl.style.removeProperty("--k");
           cells.forEach((c) => c.classList.remove("is-on"));
         }, 140);
       }
