@@ -500,9 +500,9 @@ function mountName(nameEl, glyphs = []) {
     .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
     .join("");
   // The extrusion: the name again, stepped down and to the right. Twelve thin
-  // layers in four runs, one run per section, each filled with that section's
-  // own ground (the panels' gradient, run across the whole name), then a cherry
-  // base. Thin steps read as one smooth slab, not as bands.
+  // layers, one smooth slab: at rest it runs through the four sections' grounds
+  // left to right, and the hovered (or open) section floods it with its own
+  // gradient (the panels'), then a cherry base.
   const flat = [...text].map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="g">${esc(c)}</span>`)).join("");
   const stack = Array.from({ length: 14 }, (_, n) => `<i class="sh" style="--n:${n + 1}" data-g="${n < 12 ? Math.floor(n / 3) + 1 : "b"}">${flat}</i>`).join("");
   nameEl.innerHTML =

@@ -107,10 +107,8 @@ button { font: inherit; color: inherit; }
   /* by width, and by height too: a phone on its side keeps its room for the stage */
   --fs: round(clamp(1.9rem, min(6.2vw, 12vh), 5.6rem), 1px);
   --lw: max(2px, calc(var(--fs) * .03));
-  --g1: var(--lg, var(--g-info));
-  --g2: var(--lg, var(--g-projects));
-  --g3: var(--lg, var(--g-tech));
-  --g4: var(--lg, var(--g-contact));
+  /* at rest the slab runs through all four sections' grounds, left to right */
+  --g-all: linear-gradient(90deg, #f8e08e 0%, #f4b765 12%, #ef9a5a 24%, #a9c6f0 36%, #7fa6e3 46%, #d3c2f6 58%, #b69ceb 68%, #93d8c0 82%, #6cc4b0 100%);
   position: relative;
   display: inline-block;
   margin: 0;
@@ -158,13 +156,10 @@ body.is-ready .name .stack { opacity: 1; }
   color: transparent;
   background-clip: text;
   -webkit-background-clip: text;
+  background-image: var(--lg, var(--g-all));
   translate: calc(var(--n) * var(--d)) calc(var(--n) * var(--d));
   z-index: calc(20 - var(--n));            /* the nearer layer is the one on top */
 }
-.name .sh[data-g="1"] { background-image: var(--g1); }
-.name .sh[data-g="2"] { background-image: var(--g2); }
-.name .sh[data-g="3"] { background-image: var(--g3); }
-.name .sh[data-g="4"] { background-image: var(--g4); }
 .name .sh[data-g="b"] { background: var(--cherry); background-clip: text; -webkit-background-clip: text; }
 .name .g { display: inline-block; }   /* the layers' letters sit exactly where the face's do */
 .name .l { position: relative; }
