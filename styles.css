@@ -190,6 +190,9 @@ button { font: inherit; color: inherit; }
   -webkit-text-stroke: calc(var(--ew) * 2) transparent;
   -webkit-background-clip: text;
   background-clip: text;
+  /* the paint box reaches past the glyph box, or the edge is clipped where a narrow letter's stroke overhangs it */
+  inset: calc(var(--ew) * -1);
+  padding: var(--ew);
   opacity: 0;
   transition: opacity .7s var(--ease-soft);
 }
