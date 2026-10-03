@@ -495,19 +495,28 @@ const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
 function mountName(nameEl, glyphs = []) {
   const text = nameEl.textContent.trim();
+  // each letter sits a little off its neighbours, like stickers put down by hand
+  const TILT = [-3.2, 2.4, -1.6, 3, -2.2, 1.8, -3, 2.6, -1.4, 2];
+  const SIZE = [1, 1.07, 0.95, 1.05, 0.97, 1.06, 0.94, 1.04, 1.08, 0.96];
+  const DROP = [0.03, -0.04, 0.02, -0.03, 0.04, -0.02, 0.03, -0.04, 0.02, -0.03];
   let i = 0;
   const letters = [...text]
-    .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
+    .map((c) => {
+      if (c === " ") return '<span class="sp"></span>';
+      const k = i++,
+        ch = esc(c);
+      return (
+        `<span class="l" style="--i:${k};--r:${TILT[k % TILT.length]}deg;--y:${DROP[k % DROP.length]}em;--s:${SIZE[k % SIZE.length]}">` +
+        `<i class="sh">${ch}</i>` +
+        `<span class="up"><i class="ed">${ch}</i>` +
+        [1, 2, 3, 4].map((n) => `<i class="ac a${n}">${ch}</i>`).join("") +
+        `<b class="fc">${ch}</b></span></span>`
+      );
+    })
     .join("");
-  // The extrusion: the name again, stepped down and to the right. Twelve thin
-  // layers, one smooth slab: at rest it runs through the four sections' grounds
-  // left to right, and the hovered (or open) section floods it with its own
-  // gradient (the panels'), then a cherry base.
-  const flat = [...text].map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="g">${esc(c)}</span>`)).join("");
-  const stack = Array.from({ length: 14 }, (_, n) => `<i class="sh" style="--n:${n + 1}" data-g="${n < 12 ? Math.floor(n / 3) + 1 : "b"}">${flat}</i>`).join("");
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="plate" aria-hidden="true"><span class="ink"><span class="stack">${stack}</span>${letters}</span>` +
+    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
     `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"><b>${esc(glyphs[n] || "")}</b></i>`).join("")}</span></span>`;
   const cells = [...nameEl.querySelectorAll(".mark i")];
 
@@ -518,14 +527,13 @@ function mountName(nameEl, glyphs = []) {
       if (key) {
         // --lk outlives the hover, so the marker retracts in the colour it came in
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
-        nameEl.style.setProperty("--lg", `var(--g-${key})`); // floods every layer of the extrusion
+        nameEl.dataset.k = key; // stays after the hover, so the colour fades out as it faded in
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
           nameEl.classList.remove("is-lit");
-          nameEl.style.removeProperty("--lg");
           cells.forEach((c) => c.classList.remove("is-on"));
         }, 140);
       }
