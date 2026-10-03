@@ -141,15 +141,15 @@ button { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: .2em;
-  padding-right: calc(var(--fs) * .125);   /* the stack hangs off the right: balance it */
+  padding-right: calc(var(--fs) * .1);     /* the stack hangs off the right: balance it */
 }
 .name .ink { position: relative; display: inline-block; }
 /* the extrusion: see mountName — twelve thin layers in four section grounds,
    then a cherry base, all under the cherry face */
 .name .stack { isolation: isolate; position: absolute; inset: 0; pointer-events: none; user-select: none; opacity: 0; transition: opacity .6s var(--ease-soft) .75s; }
-body.is-ready .name .stack { opacity: 1; }
+body.is-ready .name .stack { opacity: .8; }   /* the slab as a group: softer than the face, one even tone where layers overlap */
 .name .sh {
-  --d: .0085em;
+  --d: .0068em;
   position: absolute;
   inset: 0;
   font-style: normal;
@@ -160,7 +160,7 @@ body.is-ready .name .stack { opacity: 1; }
   translate: calc(var(--n) * var(--d)) calc(var(--n) * var(--d));
   z-index: calc(20 - var(--n));            /* the nearer layer is the one on top */
 }
-.name .sh[data-g="b"] { background: var(--cherry); background-clip: text; -webkit-background-clip: text; }
+.name .sh[data-g="b"] { background: color-mix(in srgb, var(--cherry) 55%, var(--desk)); background-clip: text; -webkit-background-clip: text; }
 .name .g { display: inline-block; }   /* the layers' letters sit exactly where the face's do */
 .name .l { position: relative; }
 
