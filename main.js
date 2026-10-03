@@ -495,10 +495,6 @@ const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
 function mountName(nameEl, glyphs = []) {
   const text = nameEl.textContent.trim();
-  // each letter sits a little off its neighbours, like stickers put down by hand
-  const TILT = [-3.2, 2.4, -1.6, 3, -2.2, 1.8, -3, 2.6, -1.4, 2];
-  const SIZE = [1, 1.07, 0.95, 1.05, 0.97, 1.06, 0.94, 1.04, 1.08, 0.96];
-  const DROP = [0.03, -0.04, 0.02, -0.03, 0.04, -0.02, 0.03, -0.04, 0.02, -0.03];
   let i = 0;
   const letters = [...text]
     .map((c) => {
@@ -506,11 +502,10 @@ function mountName(nameEl, glyphs = []) {
       const k = i++,
         ch = esc(c);
       return (
-        `<span class="l" style="--i:${k};--r:${TILT[k % TILT.length]}deg;--y:${DROP[k % DROP.length]}em;--s:${SIZE[k % SIZE.length]}">` +
-        `<i class="sh">${ch}</i>` +
-        `<span class="up"><i class="ed">${ch}</i>` +
+        `<span class="l" style="--i:${k}">` +
+        `<span class="sh"><i class="sb">${ch}</i>` +
         [1, 2, 3, 4].map((n) => `<i class="ac a${n}">${ch}</i>`).join("") +
-        `<b class="fc">${ch}</b></span></span>`
+        `</span><span class="up"><b class="fc">${ch}</b></span></span>`
       );
     })
     .join("");
