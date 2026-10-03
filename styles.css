@@ -107,8 +107,9 @@ button { font: inherit; color: inherit; }
   /* by width, and by height too: a phone on its side keeps its room for the stage */
   --fs: round(clamp(1.9rem, min(6.2vw, 12vh), 5.6rem), 1px);
   --lw: max(2px, calc(var(--fs) * .03));
+  --sr: calc(var(--fs) * .013);             /* the shadow, grown from the letter itself: one piece with it */
   --so: calc(var(--fs) * .05);              /* its shadow at rest: small, but enough to say it will lift */
-  --lf: calc(var(--fs) * .05);             /* how far it lifts when lit */
+  --lf: calc(var(--fs) * .03);             /* how far it lifts when lit */
   position: relative;
   display: inline-block;
   margin: 0;
@@ -164,13 +165,25 @@ button { font: inherit; color: inherit; }
   inset: 0;
   pointer-events: none;
   user-select: none;
-  translate: var(--so) var(--so);
+  opacity: .5;                              /* faint at rest; full when lit */
+  translate: var(--sr) var(--sr);
+  transition: opacity .8s var(--ease-soft);
 }
-.name .sb { position: absolute; inset: 0; color: var(--cherry); }
-.name .ac {
+/* The shadow is the letter thickened (a stroke) and moved by half of it: it
+   stays joined to the letter and only shows below and to the right, as one
+   solid extrusion — no gap, however thin the stroke of the glyph. */
+.name .sb {
   position: absolute;
   inset: 0;
+  color: var(--cherry);
+  -webkit-text-stroke: calc(var(--sr) * 2) var(--cherry);
+}
+.name .ac {
+  position: absolute;
+  inset: calc(var(--sr) * -1);              /* the paint box reaches past the glyph box, or the stroke is clipped there */
+  padding: var(--sr);
   color: transparent;
+  -webkit-text-stroke: calc(var(--sr) * 2) transparent;
   -webkit-background-clip: text;
   background-clip: text;
   opacity: 0;
@@ -203,7 +216,8 @@ button { font: inherit; color: inherit; }
 .name:hover .up,
 .name.is-lit .up { translate: calc(var(--lf) * -1) calc(var(--lf) * -1); }
 /* it rests slightly back, like the corner titles, and comes forward when lit */
-.name .plate { opacity: .84; transition: opacity .8s var(--ease-soft); }
+.name .plate { opacity: .74; transition: opacity .8s var(--ease-soft); }
+.name:hover .sh, .name.is-lit .sh { opacity: 1; }
 .name:hover .plate, .name.is-lit .plate { opacity: 1; }
 .name .sp { display: inline-block; width: .3em; }
 body.is-ready .name .l { opacity: 1; }
