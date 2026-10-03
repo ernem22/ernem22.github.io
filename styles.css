@@ -2496,6 +2496,10 @@ a.soon { cursor: default; }
 .boot.is-handoff .boot-q::before { opacity: 0; transition: opacity .5s var(--ease-soft); }
 .boot.is-handoff .boot-q::after { opacity: .6; transition: opacity .95s var(--ease-soft); }   /* = the panel's veil */
 .boot.is-handoff .boot-q > span { opacity: 0; transition: opacity .18s linear; }
+/* the second flight: the tiles come alive and get their sticker edge back */
+.boot.is-fly .boot-q { border-color: var(--cherry); transition: border-color .35s linear; }
+.boot.is-fly .boot-q::after { opacity: .3; transition: opacity .5s var(--ease-soft); }
+.boot.is-fly .boot-q::before { opacity: 1; transition: opacity .5s var(--ease-soft); }
 
 @keyframes boot-up { from { opacity: 0; translate: 0 8px; } }
 @keyframes boot-slap {
