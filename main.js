@@ -495,19 +495,28 @@ const SECTION_KEYS = ["info", "projects", "tech", "contact"];
 
 function mountName(nameEl, glyphs = []) {
   const text = nameEl.textContent.trim();
+  // each letter sits a little off its neighbours, like stickers put down by hand
+  const TILT = [-3.2, 2.4, -1.6, 3, -2.2, 1.8, -3, 2.6, -1.4, 2];
+  const SIZE = [1, 1.07, 0.95, 1.05, 0.97, 1.06, 0.94, 1.04, 1.08, 0.96];
+  const DROP = [0.03, -0.04, 0.02, -0.03, 0.04, -0.02, 0.03, -0.04, 0.02, -0.03];
   let i = 0;
   const letters = [...text]
-    .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
+    .map((c) => {
+      if (c === " ") return '<span class="sp"></span>';
+      const k = i++,
+        ch = esc(c);
+      return (
+        `<span class="l" style="--i:${k};--r:${TILT[k % TILT.length]}deg;--y:${DROP[k % DROP.length]}em;--s:${SIZE[k % SIZE.length]}">` +
+        `<i class="sh">${ch}</i>` +
+        `<span class="up"><i class="ed">${ch}</i>` +
+        [1, 2, 3, 4].map((n) => `<i class="ac a${n}">${ch}</i>`).join("") +
+        `<b class="fc">${ch}</b></span></span>`
+      );
+    })
     .join("");
-  // The extrusion: the name again, stepped down and to the right. Twelve thin
-  // layers, one smooth slab: at rest it runs through the four sections' grounds
-  // left to right, and the hovered (or open) section floods it with its own
-  // gradient (the panels'), then a cherry base.
-  const flat = [...text].map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="g">${esc(c)}</span>`)).join("");
-  const stack = Array.from({ length: 14 }, (_, n) => `<i class="sh" style="--n:${n + 1}" data-g="${n < 12 ? Math.floor(n / 3) + 1 : "b"}">${flat}</i>`).join("");
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="plate" aria-hidden="true"><span class="ink"><span class="stack">${stack}</span>${letters}</span>` +
+    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
     `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"><b>${esc(glyphs[n] || "")}</b></i>`).join("")}</span></span>`;
   const cells = [...nameEl.querySelectorAll(".mark i")];
 
@@ -518,14 +527,13 @@ function mountName(nameEl, glyphs = []) {
       if (key) {
         // --lk outlives the hover, so the marker retracts in the colour it came in
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
-        nameEl.style.setProperty("--lg", `var(--g-${key})`); // floods every layer of the extrusion
+        nameEl.dataset.k = key; // stays after the hover, so the colour fades out as it faded in
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
           nameEl.classList.remove("is-lit");
-          nameEl.style.removeProperty("--lg");
           cells.forEach((c) => c.classList.remove("is-on"));
         }, 140);
       }
@@ -2011,10 +2019,11 @@ function handoff() {
 }
 
 // The second flight: the tiles don't dissolve, they become the masthead's mark.
-// Each one leaves its quadrant on an arc, shrinks to its cell in the caret,
-// overshoots it a touch and settles — transform only, so it runs on the
-// compositor. Targets are measured from layout (the mark's tilt counted); when
-// the tiles land the real mark takes over with a settle of its own.
+// Plain and tight: each tile comes alive (the offline veil lifts, the sticker
+// edge returns) and, in section order, travels to its cell in the caret while
+// its box shrinks to the cell's — real geometry, so it is never squashed and
+// the outline stays one thickness — turning to the mark's tilt as it goes,
+// with a small overshoot at the end. Targets are measured from layout.
 function toMark() {
   const mark = document.querySelector(".name .mark");
   const plate = mark?.parentElement;
@@ -2026,34 +2035,28 @@ function toMark() {
   // the mark turns about 50% 80% of itself
   const ox = pr.left + mark.offsetLeft + mark.offsetWidth * 0.5;
   const oy = pr.top + mark.offsetTop + mark.offsetHeight * 0.8;
-  const lerp = (a, b, t) => a + (b - a) * t;
+  bootEl.classList.add("is-fly"); // veil off, sticker edge back (CSS)
   return bootTiles.map((t, i) => {
     const r = t.getBoundingClientRect(); // where the first flight left it: its quadrant
     flightsDone[i]?.cancel();
-    Object.assign(t.style, { position: "fixed", margin: "0", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, transformOrigin: "50% 50%" });
     const c = cells[i];
-    const w = c.offsetWidth,
-      h = c.offsetHeight;
-    const dx = pr.left + mark.offsetLeft + c.offsetLeft + w / 2 - ox;
-    const dy = pr.top + mark.offsetTop + c.offsetTop + h / 2 - oy;
+    const side = c.offsetWidth;
+    const dx = pr.left + mark.offsetLeft + c.offsetLeft + side / 2 - ox;
+    const dy = pr.top + mark.offsetTop + c.offsetTop + side / 2 - oy;
     const cx = ox + dx * Math.cos(rad) - dy * Math.sin(rad);
     const cy = oy + dx * Math.sin(rad) + dy * Math.cos(rad);
-    const tx = cx - (r.left + r.width / 2),
-      ty = cy - (r.top + r.height / 2);
-    const sx = w / r.width,
-      sy = h / r.height;
-    const at = (p, k = 1, lift = 0) =>
-      `translate(${(tx * p).toFixed(1)}px, ${(ty * p - lift).toFixed(1)}px) rotate(${(ang * p).toFixed(2)}deg) scale(${(sx ** p * k).toFixed(4)}, ${(sy ** p * k).toFixed(4)})`;
-    // the tiles leave in section order, each rising on a small arc
-    const lift = Math.min(70, Math.hypot(tx, ty) * 0.12);
+    const box = (L, T, W, H) => ({ left: `${L}px`, top: `${T}px`, width: `${W}px`, height: `${H}px` });
+    const from = box(r.left, r.top, r.width, r.height);
+    const over = box(cx - side * 0.58, cy - side * 0.58, side * 1.16, side * 1.16); // a touch large, then settles
+    const to = box(cx - side / 2, cy - side / 2, side, side);
+    Object.assign(t.style, { position: "fixed", margin: "0", transformOrigin: "50% 50%", ...from });
     return t.animate(
       [
-        { transform: at(0), easing: "cubic-bezier(.5,0,.3,1)" },
-        { transform: at(0.62, 1, lift), offset: 0.6, easing: "cubic-bezier(.3,0,.2,1)" },
-        { transform: at(1, 1.16), offset: 0.88, easing: "cubic-bezier(.3,0,.2,1)" },
-        { transform: at(1) },
+        { ...from, transform: "rotate(0deg)", easing: "cubic-bezier(.6,0,.2,1)" },
+        { ...over, transform: `rotate(${ang}deg)`, offset: 0.82, easing: "cubic-bezier(.3,0,.3,1)" },
+        { ...to, transform: `rotate(${ang}deg)` },
       ],
-      { duration: 1180, delay: 220 + i * 85, fill: "forwards" },
+      { duration: 1000, delay: 140 + i * 80, fill: "forwards" },
     );
   });
 }

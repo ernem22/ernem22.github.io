@@ -107,17 +107,17 @@ button { font: inherit; color: inherit; }
   /* by width, and by height too: a phone on its side keeps its room for the stage */
   --fs: round(clamp(1.9rem, min(6.2vw, 12vh), 5.6rem), 1px);
   --lw: max(2px, calc(var(--fs) * .03));
-  /* at rest the slab runs through all four sections' grounds, left to right */
-  --g-all: linear-gradient(90deg, #f8e08e 0%, #f4b765 12%, #ef9a5a 24%, #a9c6f0 36%, #7fa6e3 46%, #d3c2f6 58%, #b69ceb 68%, #93d8c0 82%, #6cc4b0 100%);
+  --ew: calc(var(--fs) * .055);             /* the die-cut edge of each sticker */
+  --so: calc(var(--fs) * .04);              /* its shadow at rest: small, but enough to say it will lift */
+  --lf: calc(var(--fs) * .045);             /* how far it lifts when lit */
   position: relative;
   display: inline-block;
   margin: 0;
   font-family: var(--display);
-  font-kerning: none;                      /* the layers are one string, the face is letter by letter: keep them in step */
   font-weight: 600;
   font-size: var(--fs);
-  line-height: .9;
-  letter-spacing: .12em;
+  line-height: .95;
+  letter-spacing: .06em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--cherry);
@@ -143,38 +143,86 @@ button { font: inherit; color: inherit; }
   gap: .2em;
   padding-right: calc(var(--fs) * .1);     /* the stack hangs off the right: balance it */
 }
-.name .ink { position: relative; display: inline-block; }
-/* the extrusion: see mountName — twelve thin layers in four section grounds,
-   then a cherry base, all under the cherry face */
-.name .stack { isolation: isolate; position: absolute; inset: 0; pointer-events: none; user-select: none; opacity: 0; transition: opacity .6s var(--ease-soft) .75s; }
-body.is-ready .name .stack { opacity: .8; }   /* the slab as a group: softer than the face, one even tone where layers overlap */
-.name .sh {
-  --d: .0068em;
+.name .ink { position: relative; display: inline-flex; align-items: center; }
+
+/* The name is set as stickers: Orbitron cut out one letter at a time, each a
+   little off its neighbours (--r, --y), later ones overlapping earlier ones.
+   Under each face: a die-cut paper edge and a hard cherry shadow. Lit, the
+   letter lifts off its shadow (the shadow stays) and the edge takes on the
+   section's ground — four stacked copies that cross-fade, so the colour comes
+   and goes smoothly (gradients can't be transitioned directly). */
+.name .l {
+  position: relative;
+  display: inline-block;
+  margin: 0 calc(var(--fs) * -.03);
+  isolation: isolate;
+  z-index: var(--i);
+  rotate: var(--r, 0deg);
+  scale: var(--s, 1);
+  translate: 0 var(--y, 0);
+  transition: rotate .8s var(--ease), scale .8s var(--ease), opacity .8s var(--ease-soft);
+  transition-delay: calc(var(--i) * 28ms), calc(var(--i) * 45ms + 150ms);
+  opacity: 0;
+}
+.name .l i, .name .l b { font-style: normal; font-weight: inherit; }
+.name .sh, .name .ed, .name .ac {
   position: absolute;
   inset: 0;
-  font-style: normal;
+  pointer-events: none;
+  user-select: none;
+}
+.name .sh {
+  color: var(--cherry);
+  -webkit-text-stroke: calc(var(--ew) * 2) var(--cherry);
+  translate: var(--so) var(--so);
+  transition: translate .8s var(--ease);
+  transition-delay: calc(var(--i) * 28ms);
+}
+.name .up {
+  position: relative;
+  display: block;
+  transition: translate .8s var(--ease);
+  transition-delay: calc(var(--i) * 28ms);
+}
+.name .ed { color: var(--cream); -webkit-text-stroke: calc(var(--ew) * 1.9) var(--cream); }   /* a hair under the accent edge, so lit it covers it fully */
+.name .ac {
   color: transparent;
-  background-clip: text;
+  -webkit-text-stroke: calc(var(--ew) * 2) transparent;
   -webkit-background-clip: text;
-  background-image: var(--lg, var(--g-all));
-  translate: calc(var(--n) * var(--d)) calc(var(--n) * var(--d));
-  z-index: calc(20 - var(--n));            /* the nearer layer is the one on top */
-}
-.name .sh[data-g="b"] { background: color-mix(in srgb, var(--cherry) 55%, var(--desk)); background-clip: text; -webkit-background-clip: text; }
-.name .g { display: inline-block; }   /* the layers' letters sit exactly where the face's do */
-.name .l { position: relative; }
-
-/* letters set in like the corner type once the boot screen lifts: up from
-   below, 45ms apart */
-.name .l {
-  display: inline-block;
+  background-clip: text;
+  /* the paint box reaches past the glyph box, or the edge is clipped where a narrow letter's stroke overhangs it */
+  inset: calc(var(--ew) * -1);
+  padding: var(--ew);
   opacity: 0;
-  translate: 0 .3em;
-  transition: opacity .8s var(--ease-soft), translate 1.1s var(--ease);
-  transition-delay: calc(var(--i) * 45ms + 150ms);
+  transition: opacity .7s var(--ease-soft);
 }
-.name .sp { display: inline-block; width: .34em; }
-body.is-ready .name .l { opacity: 1; translate: 0 0; }
+.name .a1 { background-image: var(--g-info); }
+.name .a2 { background-image: var(--g-projects); }
+.name .a3 { background-image: var(--g-tech); }
+.name .a4 { background-image: var(--g-contact); }
+.name[data-k="info"].is-lit .a1,
+.name[data-k="projects"].is-lit .a2,
+.name[data-k="tech"].is-lit .a3,
+.name[data-k="contact"].is-lit .a4 { opacity: 1; }
+/* the face carries the panels' grain, so it sits in the page like the rest of it */
+.name .fc {
+  position: relative;
+  display: block;
+  color: transparent;
+  background: url("assets/grain.png") 0 0 / 128px 128px, var(--cherry);
+  background: image-set(url("assets/grain.avif") type("image/avif"), url("assets/grain.png") type("image/png")) 0 0 / 128px 128px, var(--cherry);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.name:hover .up,
+.name.is-lit .up { translate: calc(var(--lf) * -1) calc(var(--lf) * -1); }
+.name:hover .l, .name.is-lit .l { rotate: calc(var(--r, 0deg) * .35); scale: calc(1 + (var(--s, 1) - 1) * .4); }
+/* it rests slightly back, like the corner titles, and comes forward when lit */
+.name .plate { opacity: .84; transition: opacity .8s var(--ease-soft); }
+.name:hover .plate, .name.is-lit .plate { opacity: 1; }
+.name .sp { display: inline-block; width: .3em; }
+body.is-ready .name .l { opacity: 1; }
+.name .l .up { opacity: 1; }
 
 /* the caret: four quadrants, a sticker among the letters */
 .name .mark {
@@ -2496,6 +2544,10 @@ a.soon { cursor: default; }
 .boot.is-handoff .boot-q::before { opacity: 0; transition: opacity .5s var(--ease-soft); }
 .boot.is-handoff .boot-q::after { opacity: .6; transition: opacity .95s var(--ease-soft); }   /* = the panel's veil */
 .boot.is-handoff .boot-q > span { opacity: 0; transition: opacity .18s linear; }
+/* the second flight: the tiles come alive and get their sticker edge back */
+.boot.is-fly .boot-q { border-color: var(--cherry); transition: border-color .35s linear; }
+.boot.is-fly .boot-q::after { opacity: .3; transition: opacity .5s var(--ease-soft); }
+.boot.is-fly .boot-q::before { opacity: 1; transition: opacity .5s var(--ease-soft); }
 
 @keyframes boot-up { from { opacity: 0; translate: 0 8px; } }
 @keyframes boot-slap {
