@@ -389,7 +389,6 @@ function renderPanel(p) {
 
     <div class="face" role="button" tabindex="0" aria-controls="d-${slug}" aria-expanded="false" aria-label="${esc(p.face.label)}">
       <div class="face-head">
-        <span class="idx">${esc(p.face.index)}</span>
         <div class="title">${esc(p.face.title)}</div>
         <span class="rule"></span>
         <p class="teaser">${esc(p.face.teaser)}</p>
@@ -498,50 +497,19 @@ function mountName(nameEl, glyphs = []) {
   const text = nameEl.textContent.trim();
   let i = 0;
   const letters = [...text]
-    .map((c) =>
-      c === " "
-        ? '<span class="sp"></span>'
-        : `<span class="l" style="--i:${i++}">${esc(c)}</span>`,
-    )
+    .map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="l" style="--i:${i++}">${esc(c)}</span>`))
     .join("");
+  // The extrusion: the name again, stepped down and to the right. Twelve thin
+  // layers, one smooth slab: at rest it runs through the four sections' grounds
+  // left to right, and the hovered (or open) section floods it with its own
+  // gradient (the panels'), then a cherry base.
+  const flat = [...text].map((c) => (c === " " ? '<span class="sp"></span>' : `<span class="g">${esc(c)}</span>`)).join("");
+  const stack = Array.from({ length: 14 }, (_, n) => `<i class="sh" style="--n:${n + 1}" data-g="${n < 12 ? Math.floor(n / 3) + 1 : "b"}">${flat}</i>`).join("");
   nameEl.innerHTML =
     `<span class="sr">${esc(text)}</span>` +
-    `<span class="plate" aria-hidden="true"><span class="ink">${letters}</span>` +
+    `<span class="plate" aria-hidden="true"><span class="ink"><span class="stack">${stack}</span>${letters}</span>` +
     `<span class="mark">${SECTION_KEYS.map((k, n) => `<i data-k="${k}" style="--n:${n}"><b>${esc(glyphs[n] || "")}</b></i>`).join("")}</span></span>`;
   const cells = [...nameEl.querySelectorAll(".mark i")];
-
-  // leans toward the pointer a few pixels, the way the scenes' glyphs do
-  let castRaf = 0,
-    px = 0,
-    py = 0,
-    lx = "",
-    ly = "";
-  const cast = () => {
-    castRaf = 0;
-    const r = nameEl.getBoundingClientRect();
-    const dx = r.left + r.width / 2 - px,
-      dy = r.top + r.height / 2 - py;
-    const d = Math.hypot(dx, dy) || 1;
-    // the stack always falls down-right; the pointer only swings it within that quadrant
-    const clamp = (v) => Math.min(1, Math.max(0.3, v));
-    const vx = clamp(0.65 + (dx / d) * 0.45).toFixed(2),
-      vy = clamp(0.8 + (dy / d) * 0.35).toFixed(2);
-    if (vx !== lx) nameEl.style.setProperty("--vx", (lx = vx));
-    if (vy !== ly) nameEl.style.setProperty("--vy", (ly = vy));
-  };
-  addEventListener(
-      "pointermove",
-      (e) => {
-        if (reduced || e.pointerType !== "mouse") return; // a finger scrolling isn't a pointer to lean to
-        nameEl.style.setProperty("--mx", ((e.clientX / innerWidth) * 2 - 1).toFixed(3));
-        nameEl.style.setProperty("--my", ((e.clientY / innerHeight) * 2 - 1).toFixed(3));
-        // the extrusion is cast away from the pointer, like a light source
-        px = e.clientX;
-        py = e.clientY;
-        if (!castRaf) castRaf = requestAnimationFrame(cast);
-      },
-      { passive: true },
-    );
 
   let offT = 0;
   return {
@@ -550,14 +518,14 @@ function mountName(nameEl, glyphs = []) {
       if (key) {
         // --lk outlives the hover, so the marker retracts in the colour it came in
         nameEl.style.setProperty("--lk", `var(--acc-${key})`);
-        nameEl.style.setProperty("--k", `var(--acc-${key})`); // floods every layer of the extrusion
+        nameEl.style.setProperty("--lg", `var(--g-${key})`); // floods every layer of the extrusion
         nameEl.classList.add("is-lit");
         cells.forEach((c) => c.classList.toggle("is-on", c.dataset.k === key));
       } else {
         // crossing the gutter between two corners shouldn't flicker the marker
         offT = setTimeout(() => {
           nameEl.classList.remove("is-lit");
-          nameEl.style.removeProperty("--k");
+          nameEl.style.removeProperty("--lg");
           cells.forEach((c) => c.classList.remove("is-on"));
         }, 140);
       }
@@ -800,27 +768,6 @@ function mountDesk() {
     });
   }
 
-  {
-    addEventListener(
-      "pointermove",
-      (e) => {
-        if (reduced || e.pointerType !== "mouse") return; // touch has no hover to answer
-        ptr.tx = e.clientX;
-        ptr.ty = e.clientY;
-        if (!ptr.on) {
-          ptr.on = true;
-          ptr.x = ptr.tx;
-          ptr.y = ptr.ty;
-        }
-        kick();
-      },
-      { passive: true },
-    );
-    document.documentElement.addEventListener("pointerleave", () => {
-      ptr.on = false;
-      kick();
-    });
-  }
   document.addEventListener("visibilitychange", () => !document.hidden && kick());
   addEventListener("resize", layout);
   layout();
@@ -1851,55 +1798,6 @@ function boot(data) {
   }
 
   /* ──────────────────────────────────────────────────────────────
-     Scenes — depth: while the pointer is on the grid every glyph leans
-     toward it and its stickers slide the other way (CSS does the easing)
-     ────────────────────────────────────────────────────────────── */
-  {
-    const scenes = panels
-      .map((p) => [p.dataset.q, p.querySelector(".scene")])
-      .filter(([, s]) => s);
-    let raf = 0,
-      px = 0,
-      py = 0,
-      box = null;
-    const lean = () => {
-      raf = 0;
-      if (!box) return;
-      for (const [q, s] of scenes) {
-        // each scene measures from its own quadrant's centre
-        const cx = box.left + box.width * (q[1] === "l" ? 0.25 : 0.75),
-          cy = box.top + box.height * (q[0] === "t" ? 0.25 : 0.75);
-        const nx = Math.max(-1, Math.min(1, (px - cx) / (box.width / 2))),
-          ny = Math.max(-1, Math.min(1, (py - cy) / (box.height / 2)));
-        s.style.setProperty("--mx", nx.toFixed(3));
-        s.style.setProperty("--my", ny.toFixed(3));
-      }
-    };
-    const rest = () => {
-      box = null;
-      for (const [, s] of scenes) {
-        s.style.setProperty("--mx", "0");
-        s.style.setProperty("--my", "0");
-      }
-    };
-    if (!reduced && scenes.length) {
-      stage.addEventListener(
-        "pointermove",
-        (e) => {
-          if (state !== "idle" || e.pointerType !== "mouse") return;
-          if (!box) box = stage.getBoundingClientRect();
-          px = e.clientX;
-          py = e.clientY;
-          if (!raf) raf = requestAnimationFrame(lean);
-        },
-        { passive: true },
-      );
-      stage.addEventListener("pointerleave", rest);
-      addEventListener("resize", () => (box = null));
-    }
-  }
-
-  /* ──────────────────────────────────────────────────────────────
      Project mocks — generated SVG for the dashboard and the archive
      ────────────────────────────────────────────────────────────── */
   const svg = (viewBox, body, attrs = "") =>
@@ -2033,6 +1931,7 @@ const BOOT_MIN = reduced ? 300 : bootSeen ? 1500 : 2800;
 // everything is already cached
 const STEP_GAP = reduced ? 0 : bootSeen ? 260 : 480;
 let bootDone = false;
+let flightsDone = []; // the first flight's animations, handed to the second
 
 // Progress: each real milestone (data, render, paint, fonts) ticks its log line
 // with the time it actually took, fills its bar segment and brings its section's
@@ -2112,22 +2011,26 @@ function handoff() {
 }
 
 // The second flight: the tiles don't dissolve, they become the masthead's mark.
-// Each one shrinks from its quadrant to the spot of its cell in the caret —
-// measured from layout, so the mark's tilt is counted — and when they land the
-// real mark takes over. Returns null where there's nothing to fly to.
+// Each one leaves its quadrant on an arc, shrinks to its cell in the caret,
+// overshoots it a touch and settles — transform only, so it runs on the
+// compositor. Targets are measured from layout (the mark's tilt counted); when
+// the tiles land the real mark takes over with a settle of its own.
 function toMark() {
   const mark = document.querySelector(".name .mark");
   const plate = mark?.parentElement;
   const cells = mark ? [...mark.children] : [];
   if (reduced || !plate || cells.length !== bootTiles.length) return null;
   const pr = plate.getBoundingClientRect();
-  const ang = parseFloat(getComputedStyle(mark).rotate) || 0; // the tilt it will rest at, in degrees
+  const ang = parseFloat(getComputedStyle(mark).rotate) || 0; // the tilt it rests at, degrees
   const rad = (ang * Math.PI) / 180;
   // the mark turns about 50% 80% of itself
   const ox = pr.left + mark.offsetLeft + mark.offsetWidth * 0.5;
   const oy = pr.top + mark.offsetTop + mark.offsetHeight * 0.8;
-  const box = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  const lerp = (a, b, t) => a + (b - a) * t;
   return bootTiles.map((t, i) => {
+    const r = t.getBoundingClientRect(); // where the first flight left it: its quadrant
+    flightsDone[i]?.cancel();
+    Object.assign(t.style, { position: "fixed", margin: "0", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, transformOrigin: "50% 50%" });
     const c = cells[i];
     const w = c.offsetWidth,
       h = c.offsetHeight;
@@ -2135,12 +2038,22 @@ function toMark() {
     const dy = pr.top + mark.offsetTop + c.offsetTop + h / 2 - oy;
     const cx = ox + dx * Math.cos(rad) - dy * Math.sin(rad);
     const cy = oy + dx * Math.sin(rad) + dy * Math.cos(rad);
+    const tx = cx - (r.left + r.width / 2),
+      ty = cy - (r.top + r.height / 2);
+    const sx = w / r.width,
+      sy = h / r.height;
+    const at = (p, k = 1, lift = 0) =>
+      `translate(${(tx * p).toFixed(1)}px, ${(ty * p - lift).toFixed(1)}px) rotate(${(ang * p).toFixed(2)}deg) scale(${(sx ** p * k).toFixed(4)}, ${(sy ** p * k).toFixed(4)})`;
+    // the tiles leave in section order, each rising on a small arc
+    const lift = Math.min(70, Math.hypot(tx, ty) * 0.12);
     return t.animate(
       [
-        { ...box(t.getBoundingClientRect()), transform: "none" },
-        { ...box({ left: cx - w / 2, top: cy - h / 2, width: w, height: h }), transform: `rotate(${ang}deg)` },
+        { transform: at(0), easing: "cubic-bezier(.5,0,.3,1)" },
+        { transform: at(0.62, 1, lift), offset: 0.6, easing: "cubic-bezier(.3,0,.2,1)" },
+        { transform: at(1, 1.16), offset: 0.88, easing: "cubic-bezier(.3,0,.2,1)" },
+        { transform: at(1) },
       ],
-      { duration: 1050, delay: 260 + i * 70, easing: "cubic-bezier(.7,0,.16,1)", fill: "forwards" }, // a beat on the quadrants first
+      { duration: 1180, delay: 220 + i * 85, fill: "forwards" },
     );
   });
 }
@@ -2182,6 +2095,7 @@ function finishBoot() {
   };
   const flights = handoff();
   if (flights) {
+    flightsDone = flights;
     const land = () => {
       stageIn(); // the content comes up as the tiles leave their quadrants
       const home = toMark();
