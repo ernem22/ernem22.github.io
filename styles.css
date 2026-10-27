@@ -2,6 +2,7 @@
    Tokens
    ────────────────────────────────────────────────────────────── */
 :root {
+  color-scheme: light;
   --cream: #f3ebdd;
   --cherry: #861024;
   --c70: rgba(134, 16, 36, .7);
@@ -61,11 +62,20 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body { height: 100%; margin: 0; }
+html { -webkit-tap-highlight-color: transparent; }
+/* no double-tap zoom wait on anything you tap */
+a, button, [role="button"] { touch-action: manipulation; }
 
 body {
   height: 100vh;
   height: 100dvh;
   padding: var(--edge);
+  /* a phone held sideways: keep the sheets clear of the notch (the desk still runs under it) */
+  padding:
+    max(var(--edge), env(safe-area-inset-top))
+    max(var(--edge), env(safe-area-inset-right))
+    max(var(--edge), env(safe-area-inset-bottom))
+    max(var(--edge), env(safe-area-inset-left));
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   row-gap: round(clamp(10px, 2.2vh, 24px), 1px);
@@ -128,7 +138,7 @@ button { font: inherit; color: inherit; }
   contain: layout style;
 }
 .name.is-small { scale: var(--name-k, .5); }
-.name .sr {
+.sr {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1052,6 +1062,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 /* press: lifts a touch on hover, sinks into its shadow on click */
 .press { transition: transform .25s var(--ease), background-color .25s linear; }
 .press:hover, .press:focus-visible { transform: translate(-1px, -1px); outline: none; }
+.press:focus-visible { outline: var(--bw) solid var(--cherry); outline-offset: 3px; }
 .press:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--cherry); transition-duration: .06s; }
 
 /* ── head ── */
@@ -1162,6 +1173,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 .grid-btn[aria-pressed="true"] .sw { background: var(--acc); }
 .grid-btn[aria-pressed="true"] .sw::after { transform: translateX(12px); }
 .grid-btn:hover, .grid-btn:focus-visible { color: var(--cherry); outline: none; }
+.grid-btn:focus-visible { outline: var(--bw) dashed var(--cherry); outline-offset: 3px; }
 
 .close i {
   position: relative;

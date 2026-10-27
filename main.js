@@ -15,6 +15,55 @@ function esc(s) {
   );
 }
 
+/* @shared:start — build.mjs runs this block too, so index.html's <head>
+   gets exactly the values the page shows. Keep it free of DOM access. */
+// {tokens} in any data.js string resolve from `site` (and a few values
+// worked out from it), so each fact is written down once.
+function resolveData(data) {
+  const site = data.site || {};
+  const lang = site.meta?.lang || "en";
+  const t = {};
+  for (const [k, v] of Object.entries(site))
+    if (typeof v === "string" || typeof v === "number") t[k] = String(v);
+  if (site.name) t.first = site.name.trim().split(/\s+/)[0].toLowerCase();
+  if (site.since) t.years = String(new Date().getFullYear() - site.since);
+  if (site.timezone) {
+    const tz = new Intl.DateTimeFormat("en", {
+      timeZone: site.timezone,
+      timeZoneName: "shortOffset",
+    })
+      .formatToParts(new Date())
+      .find((p) => p.type === "timeZoneName");
+    if (tz) t.offset = tz.value === "GMT" ? "UTC+0" : tz.value.replace("GMT", "UTC");
+  }
+  if (site.available)
+    t.availableMonth = new Intl.DateTimeFormat(lang, {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(`${site.available}T00:00:00Z`));
+  const years = (data.panels || [])
+    .flatMap((p) => p.detail?.content?.projects || [])
+    .map((p) => Number(p.year))
+    .filter(Boolean);
+  if (years.length) {
+    const lo = Math.min(...years),
+      hi = Math.max(...years);
+    t.projectYears = lo === hi ? String(lo) : `${lo}–${hi}`;
+  }
+  // unknown {words} are left alone, so code samples keep their braces
+  const fill = (v) =>
+    typeof v === "string"
+      ? v.replace(/\{(\w+)\}/g, (m, k) => t[k] ?? m)
+      : Array.isArray(v)
+        ? v.map(fill)
+        : v && typeof v === "object"
+          ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fill(x)]))
+          : v;
+  return fill(data);
+}
+/* @shared:end */
+
 /* UI chrome labels — come from data.js site.ui, fall back to English */
 const UI_DEFAULTS = {
   expand: "Expand",
@@ -22,6 +71,10 @@ const UI_DEFAULTS = {
   closeNote: "Close note",
   usedIn: "Used in",
   sections: "Sections",
+  prevSection: "Previous section",
+  nextSection: "Next section",
+  yr: "yr",
+  yrs: "yrs",
   copy: "Copy",
   copied: "Copied",
   copyFallback: "Press ⌘/Ctrl + C",
@@ -86,7 +139,7 @@ function sceneMarkup(scene) {
       <div class="chip c2 near">${esc(chips[1])}</div>
       <div class="glyph">
         <div class="bob"><span class="lt">&lt;</span><span class="sl">/</span><span class="gt">&gt;</span><i class="caret"></i>
-          <div class="sel"><i class="box"></i><i class="h tl"></i><i class="h tr"></i><i class="h bl"></i><i class="h br"></i><span class="fr">stack.tsx</span><span class="dm">hug × hug</span></div>
+          <div class="sel"><i class="box"></i><i class="h tl"></i><i class="h tr"></i><i class="h bl"></i><i class="h br"></i><span class="fr">${esc(scene.file ?? "stack.tsx")}</span><span class="dm">${esc(scene.dims ?? "hug × hug")}</span></div>
         </div>
       </div>
     </div>`;
@@ -144,7 +197,7 @@ function mockLedger(m) {
         <div class="tokens">${tokens}</div>
         <code>${esc(m.code || "")}</code>
         <div class="props">
-          <span>Prop</span><span>Type</span><span>Default</span>
+          ${(m.columns || ["Prop", "Type", "Default"]).map((h) => `<span>${esc(h)}</span>`).join("")}
           ${props}
         </div>
       </div>
@@ -419,6 +472,7 @@ function applyMeta(meta) {
     set('meta[name="description"]', "content", meta.description);
   if (meta.themeColor)
     set('meta[name="theme-color"]', "content", meta.themeColor);
+  if (meta.favicon) set('link[rel="icon"]', "href", meta.favicon);
   if (meta.og) {
     set('meta[property="og:type"]', "content", meta.og.type || "website");
     set('meta[property="og:title"]', "content", meta.og.title || meta.title);
@@ -1343,9 +1397,9 @@ function boot(data) {
       "beforebegin",
       `
       <nav class="d-nav rv" style="--i:0" aria-label="${esc(UI.sections)}">
-        <button type="button" class="press" data-step="-1" aria-label="Previous section: ${NAMES[prev]}"><span aria-hidden="true">←</span><em>${NAMES[prev]}</em></button>
+        <button type="button" class="press" data-step="-1" aria-label="${esc(UI.prevSection)}: ${esc(NAMES[prev])}"><span aria-hidden="true">←</span><em>${esc(NAMES[prev])}</em></button>
         <b aria-hidden="true">${String(i + 1).padStart(2, "0")}/${String(n).padStart(2, "0")}</b>
-        <button type="button" class="press" data-step="1" aria-label="Next section: ${NAMES[next]}"><em>${NAMES[next]}</em><span aria-hidden="true">→</span></button>
+        <button type="button" class="press" data-step="1" aria-label="${esc(UI.nextSection)}: ${esc(NAMES[next])}"><em>${esc(NAMES[next])}</em><span aria-hidden="true">→</span></button>
       </nav>`,
     );
     panel
@@ -1683,6 +1737,7 @@ function boot(data) {
     })();
 
   let takeFor = null;
+  const plural = new Intl.PluralRules(document.documentElement.lang || "en");
   function closeTake() {
     if (!takeFor) return false;
     takeFor.setAttribute("aria-expanded", "false");
@@ -1704,8 +1759,10 @@ function boot(data) {
     btn.parentElement.classList.add("open");
     take.querySelector(".take-ico").innerHTML = icon(t.id);
     take.querySelector("h3").textContent = t.name;
+    const yrs = new Date().getFullYear() - t.since;
+    const unit = plural.select(yrs) === "one" ? UI.yr : UI.yrs;
     take.querySelector(".take-meta").innerHTML =
-      `${esc(t.tier === 1 ? UI.dailyDriver : UI.whenFits)} · <span>${esc(t.since)}</span> · <span>${esc(new Date().getFullYear() - t.since)} yrs</span>`;
+      `${esc(t.tier === 1 ? UI.dailyDriver : UI.whenFits)} · <span>${esc(t.since)}</span> · <span>${esc(yrs)} ${esc(unit)}</span>`;
     take.querySelector("p").textContent = t.take;
     take.querySelector("footer em").textContent = t.used;
     take.hidden = false;
@@ -1869,8 +1926,7 @@ function boot(data) {
      ────────────────────────────────────────────────────────────── */
   const clock = document.getElementById("clock");
   if (clock) {
-    const contact = data.panels.find((p) => p.detail.layout === "contact");
-    const tz = contact?.detail.content?.clock?.timezone || "Europe/Lisbon";
+    const tz = data.site?.timezone || "UTC";
     const fmt = new Intl.DateTimeFormat("en-GB", {
       timeZone: tz,
       hour: "2-digit",
@@ -1889,6 +1945,7 @@ function boot(data) {
   document.querySelectorAll('a[href="#"]').forEach((a) => {
     a.classList.add("soon");
     a.setAttribute("aria-disabled", "true");
+    a.tabIndex = -1; // nowhere to go yet: not a tab stop
     a.title = UI.soon;
     // the arrow promises a destination; placeholders drop it
     if (a.closest(".pv-links"))
@@ -1899,6 +1956,11 @@ function boot(data) {
 
   document.querySelectorAll("[data-copy]").forEach((btn) => {
     const original = btn.textContent;
+    // the label swap is visual; screen readers hear the result from a status beside it
+    const status = document.createElement("span");
+    status.className = "sr";
+    status.setAttribute("role", "status");
+    btn.after(status);
     btn.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(btn.dataset.copy);
@@ -1906,8 +1968,10 @@ function boot(data) {
       } catch {
         btn.textContent = UI.copyFallback;
       }
+      status.textContent = btn.textContent;
       setTimeout(() => {
         btn.textContent = original;
+        status.textContent = "";
       }, 1800);
     });
   });
@@ -2127,13 +2191,14 @@ function finishBoot() {
 
 async function start() {
   const stage = document.getElementById("stage");
-  const data = window.DATA;
-  if (!data || !Array.isArray(data.panels)) {
+  if (!window.DATA || !Array.isArray(window.DATA.panels)) {
     stage.innerHTML =
       '<p class="boot-error">Could not read <code>data.js</code> — the file must load and define <code>window.DATA</code>.</p>';
     finishBoot();
     return;
   }
+  // tokens filled once, up front: everything below reads finished values
+  const data = (window.DATA = resolveData(window.DATA));
   applyMeta(data.site?.meta);
   UI = { ...UI_DEFAULTS, ...(data.site?.ui || {}) };
   if (bootLog) bootLog.textContent = UI.loading || "loading";

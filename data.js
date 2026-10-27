@@ -2,6 +2,17 @@
    Single source of truth: window.DATA.
    Loaded as a plain script (not fetched) so the site also works
    from the filesystem (file://) with no server. Edit values here.
+
+   Facts live once, in `site`. Any string anywhere below can use them
+   as {tokens}: {name} {role} {based} {timezone} {email} {since}
+   {available}, plus a few worked out from them:
+     {first}          first name, lower-case ("eren")
+     {years}          years since {since}
+     {offset}         {timezone}'s UTC offset today ("UTC+3")
+     {availableMonth} {available} as "January 2027"
+     {projectYears}   span of the projects' years ("2022–2025")
+   After editing, `npm run build` copies site.meta into index.html's
+   <head> (for link previews, which don't run JS) and re-minifies.
    ────────────────────────────────────────────────────────────── */
 window.DATA = {
   "site": {
@@ -9,17 +20,19 @@ window.DATA = {
     "role": "Software Developer",
     "based": "Istanbul",
     "timezone": "Europe/Istanbul",
+    "since": 2016,
+    "email": "hello@elianmoreau.dev",
+    "available": "2027-01-04",
     "meta": {
       "lang": "en",
-      "title": "Eren Macit — Software Developer",
-      "description": "Eren Macit is a software developer living in Istanbul. He loves trying new things; when it comes to aesthetics and details, however, he’s dangerously meticulous. An obsession with perfection? It’s like a bad superpower.",
+      "title": "{name} — {role}",
+      "description": "{name} is a software developer living in {based}. He loves trying new things; when it comes to aesthetics and details, however, he’s dangerously meticulous. An obsession with perfection? It’s like a bad superpower.",
       "themeColor": "#eadfcb",
       "favicon": "assets/favicon.svg",
       "og": {
         "type": "website",
-        "title": "Eren Macit — Software Developer",
-        "description": "Software developer in Istanbul — dangerously meticulous about aesthetics and details.",
-        "image": "assets/og.jpg",
+        "description": "Software developer in {based} — dangerously meticulous about aesthetics and details.",
+        "image": "https://ernem22.github.io/assets/og.jpg",
         "imageWidth": 1200,
         "imageHeight": 630
       },
@@ -31,6 +44,10 @@ window.DATA = {
       "closeNote": "Close note",
       "usedIn": "Used in",
       "sections": "Sections",
+      "prevSection": "Previous section",
+      "nextSection": "Next section",
+      "yr": "yr",
+      "yrs": "yrs",
       "copy": "Copy",
       "copied": "Copied",
       "copyFallback": "Press ⌘/Ctrl + C",
@@ -62,7 +79,7 @@ window.DATA = {
       },
       "face": {
         "title": "Info",
-        "teaser": "Front-end developer, shipping interfaces from Lisbon since 2016.",
+        "teaser": "Front-end developer, shipping interfaces from {based} since {since}.",
         "label": "Open Info"
       },
       "detail": {
@@ -72,11 +89,11 @@ window.DATA = {
         "layout": "info",
         "content": {
           "lead": "Front-end developer building fast, accessible interfaces — and the design systems behind them.",
-          "copy": "Ten years on the part of the web people actually touch. I care about render performance, components that work with a keyboard and a screen reader, typed APIs other developers enjoy, and motion that stays off the main thread. Independent since 2023, working with product teams that want their front-end to feel as good as the Figma file.",
+          "copy": "{years} years on the part of the web people actually touch. I care about render performance, components that work with a keyboard and a screen reader, typed APIs other developers enjoy, and motion that stays off the main thread. Independent since 2023, working with product teams that want their front-end to feel as good as the Figma file.",
           "stats": [
             {
               "label": "Years shipping",
-              "value": "10",
+              "value": "{years}",
               "unit": "yrs"
             },
             {
@@ -110,7 +127,7 @@ window.DATA = {
                 },
                 {
                   "t": "v",
-                  "v": "elian"
+                  "v": "{first}"
                 },
                 {
                   "t": "plain",
@@ -124,7 +141,7 @@ window.DATA = {
                 },
                 {
                   "t": "s",
-                  "v": "\"Front-end Developer\""
+                  "v": "\"{role}\""
                 },
                 {
                   "t": "plain",
@@ -138,7 +155,7 @@ window.DATA = {
                 },
                 {
                   "t": "s",
-                  "v": "\"Lisbon, PT · UTC+0\""
+                  "v": "\"{based} · {offset}\""
                 },
                 {
                   "t": "plain",
@@ -274,7 +291,7 @@ window.DATA = {
                 },
                 {
                   "t": "s",
-                  "v": "\"2027-01-04\""
+                  "v": "\"{available}\""
                 },
                 {
                   "t": "plain",
@@ -372,7 +389,7 @@ window.DATA = {
       },
       "face": {
         "title": "Projects",
-        "teaser": "Products, systems and open‑source tools, 2022–2025.",
+        "teaser": "Products, systems and open‑source tools, {projectYears}.",
         "label": "Open Projects"
       },
       "detail": {
@@ -389,6 +406,11 @@ window.DATA = {
               "kind": "Design system · 2025",
               "mock": {
                 "type": "ledger",
+                "columns": [
+                  "Prop",
+                  "Type",
+                  "Default"
+                ],
                 "url": "ledger.tessera.dev/components/button",
                 "nav": [
                   "Ledger",
@@ -881,7 +903,9 @@ window.DATA = {
         "chips": [
           "$ npm run dev",
           "✓ 0 errors"
-        ]
+        ],
+        "file": "stack.tsx",
+        "dims": "hug × hug"
       },
       "face": {
         "title": "Techstack",
@@ -915,7 +939,7 @@ window.DATA = {
       },
       "face": {
         "title": "Contact",
-        "teaser": "Taking on contract work from January 2027.",
+        "teaser": "Taking on contract work from {availableMonth}.",
         "label": "Open Contact"
       },
       "detail": {
@@ -926,12 +950,11 @@ window.DATA = {
         "content": {
           "email": {
             "label": "Email",
-            "address": "hello@elianmoreau.dev"
+            "address": "{email}"
           },
           "clock": {
-            "label": "Local time — Lisbon",
-            "timezone": "Europe/Lisbon",
-            "note": "UTC+0 · overlaps with Europe all day, US East until 18:00."
+            "label": "Local time — {based}",
+            "note": "{offset} · overlaps with Europe all day, US East until 18:00."
           },
           "socials": {
             "label": "Elsewhere",
@@ -967,7 +990,7 @@ window.DATA = {
           "availability": {
             "label": "Availability",
             "before": "Open to contract work from",
-            "date": "January 2027",
+            "date": "{availableMonth}",
             "after": "— design systems, performance audits, or building the product alongside your team.",
             "terms": [
               {

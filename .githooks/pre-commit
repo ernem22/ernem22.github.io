@@ -1,0 +1,16 @@
+#!/bin/sh
+# Every commit ships a built site: index.html's <head> synced from data.js and
+# fresh .min files, so what's committed is always what data.js says.
+# (Enabled by `npm install`, via the prepare script: core.hooksPath = .githooks)
+
+if [ ! -d node_modules/esbuild ]; then
+  echo "pre-commit: esbuild missing, run npm install first" >&2
+  exit 1
+fi
+
+npm run build --silent || {
+  echo "pre-commit: build failed, commit stopped" >&2
+  exit 1
+}
+
+git add index.html main.min.js styles.min.css
