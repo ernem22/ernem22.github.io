@@ -14,3 +14,4 @@ npm run build --silent || {
 }
 
 git add index.html main.min.js styles.min.css
+[ -f projects.js ] && git add projects.js

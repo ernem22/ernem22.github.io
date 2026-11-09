@@ -3,6 +3,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
+    "projects": "node scripts/fetch-projects.mjs",
+    "check": "node scripts/check-content.mjs",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {

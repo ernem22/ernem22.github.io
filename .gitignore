@@ -3,3 +3,13 @@
 Thumbs.db
 .serena
 node_modules/
+.playwright-cli/
+output/playwright/
+*.[mM][dD]
+.agents/
+.codex/
+.thinkrail/
+.aws/
+.env
+.env.*
+*.log

@@ -36,12 +36,14 @@ function resolveData(data) {
       .find((p) => p.type === "timeZoneName");
     if (tz) t.offset = tz.value === "GMT" ? "UTC+0" : tz.value.replace("GMT", "UTC");
   }
-  if (site.available)
-    t.availableMonth = new Intl.DateTimeFormat(lang, {
+  if (site.available) {
+    const availableDate = new Date(`${site.available}T00:00:00Z`);
+    t.availableMonth = Number.isNaN(availableDate.getTime()) ? String(site.available) : new Intl.DateTimeFormat(lang, {
       month: "long",
       year: "numeric",
       timeZone: "UTC",
-    }).format(new Date(`${site.available}T00:00:00Z`));
+    }).format(availableDate);
+  }
   const years = (data.panels || [])
     .flatMap((p) => p.detail?.content?.projects || [])
     .map((p) => Number(p.year))
@@ -265,7 +267,46 @@ function mockTide(m) {
     </div>`;
   return mockShell("tide", mockBar(m.url), screen);
 }
-function mockMarkup(mock, name) {
+/* Generic repo preview: real GitHub metadata, animated with CSS.
+   Repos with a hand-built `mock` in data.js.projectPreviews use that instead. */
+function mockRepo(project) {
+  const repo = project.repo || {};
+  const owner = repo.owner || "github";
+  const topics = (repo.topics || [])
+    .filter((t) => t !== "portfolio")
+    .slice(0, 3);
+  const date = repo.pushed || repo.created;
+  const updated = date
+    ? new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(
+        new Date(date),
+      )
+    : "";
+  const avatar = repo.avatar
+    ? `<img src="${esc(repo.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+    : `<span class="gh" aria-hidden="true">GH</span>`;
+  // Deterministic bars: stable between visits, animated by CSS only.
+  const bars = Array.from(
+    { length: 30 },
+    (_, i) => `<i style="--h:${16 + ((i * 37) % 74)}%;--i:${i}"></i>`,
+  ).join("");
+  const screen = `<div class="screen">
+      <aside class="repo-id">
+        <div class="who">${avatar}<div><b>${esc(owner)}</b><span>${esc(project.name)}</span></div></div>
+        <p>${esc(project.desc)}</p>
+        <div class="topics">${topics.map((t) => `<span>${esc(t)}</span>`).join("")}</div>
+        <div class="stats"><span><b>★ ${esc(repo.stars || 0)}</b> stars</span><span><b>${esc(repo.forks || 0)}</b> forks</span></div>
+      </aside>
+      <div class="repo-flow">
+        <div class="flow-head"><i class="dot"></i><span>${esc(repo.language || "Code")}</span><em>${esc(updated)}</em></div>
+        <div class="commits" aria-hidden="true"><span class="scan"></span>${bars}</div>
+        <div class="log"><span class="ok">●</span> public repository <em>main</em></div>
+      </div>
+    </div>`;
+  return mockShell("repo", mockBar(`github.com/${owner}/${project.name}`), screen);
+}
+
+function mockMarkup(project) {
+  const mock = project?.mock;
   if (mock && typeof mock === "object") {
     if (mock.type === "ledger") return mockLedger(mock);
     if (mock.type === "pulse") return mockPulse(mock);
@@ -273,7 +314,63 @@ function mockMarkup(mock, name) {
     if (mock.type === "code") return mockCode(mock);
     if (mock.type === "tide") return mockTide(mock);
   }
-  return `<div class="mock" aria-hidden="true"><div class="bar"><i></i><i></i><i></i><span>${esc(name)}</span></div><div class="screen"><p class="ln w70"></p><p class="ln w45"></p><p class="ln w55"></p></div></div>`;
+  if (project?.repo) return mockRepo(project);
+  return `<div class="mock" aria-hidden="true"><div class="bar"><i></i><i></i><i></i><span>${esc(project?.name)}</span></div><div class="screen"><p class="ln w70"></p><p class="ln w45"></p><p class="ln w55"></p></div></div>`;
+}
+
+/* GitHub snapshot → project cards. `window.GITHUB_REPOS` is written at build
+   time by scripts/fetch-projects.mjs; data.js.projectPreviews supplies local
+   overrides (role, stack, and optional hand-built `mock`). */
+function repoProjects(repos, overrides = {}) {
+  const when = (date) => {
+    const d = date ? new Date(date) : null;
+    if (!d || Number.isNaN(d.getTime())) return "";
+    return new Intl.DateTimeFormat("en", {
+      month: "short",
+      year: "numeric",
+    }).format(d);
+  };
+  return repos.map((repo) => {
+    const o = overrides[repo.name] || {};
+    const date = repo.pushed || repo.created;
+    const year = o.year || (date ? String(new Date(date).getFullYear()) : "");
+    const type = o.type || repo.language || "Open source";
+    const stack = o.stack || repo.language || "";
+    const bits = [];
+    if (repo.stars) bits.push(`${repo.stars} star${repo.stars === 1 ? "" : "s"}`);
+    if (repo.forks) bits.push(`${repo.forks} fork${repo.forks === 1 ? "" : "s"}`);
+    if (when(repo.pushed)) bits.push(`updated ${when(repo.pushed)}`);
+    const links = [];
+    if (repo.url) links.push({ label: "GitHub ↗", href: repo.url });
+    if (repo.homepage && repo.homepage !== repo.url)
+      links.push({ label: "Live ↗", href: repo.homepage });
+    return {
+      name: o.name || repo.name,
+      type,
+      year,
+      kind: o.kind || [type, year].filter(Boolean).join(" · "),
+      mock: o.mock || null,
+      desc: o.desc || repo.description || "Open-source project on GitHub.",
+      links: o.links || links,
+      meta:
+        o.meta ||
+        [
+          { label: "Role", text: o.role || "Author, maintainer" },
+          { label: "Stack", text: stack || "—" },
+          { label: "Impact", text: o.impact || bits.join(" · ") || "Open source" },
+        ],
+      repo,
+    };
+  });
+}
+
+function applyRepoProjects(data) {
+  const repos = Array.isArray(window.GITHUB_REPOS) ? window.GITHUB_REPOS : [];
+  const panel = (data.panels || []).find((p) => p.id === "p-projects");
+  const content = panel?.detail?.content;
+  if (!repos.length || !content || !Array.isArray(content.projects)) return;
+  // Non-empty only: until the topic exists on GitHub, data.js stays the fallback.
+  content.projects = repoProjects(repos, data.projectPreviews || {});
 }
 
 /* Detail bodies — each panel's layout describes its scope in data.js */
@@ -345,7 +442,7 @@ function renderBody(p) {
             `<article class="pv${i === 0 ? " is-current" : ""}">
           <header class="pv-top"><h3>${esc(project.name)}</h3><span class="pv-kind">${esc(project.kind)}</span>
             <div class="pv-links">${project.links.map((l) => `<a class="press" href="${esc(l.href)}">${esc(l.label)}</a>`).join("")}</div></header>
-          <div class="pv-art">${mockMarkup(project.mock, project.name)}</div>
+          <div class="pv-art">${mockMarkup(project)}</div>
           <div class="pv-info">
             <p class="pv-desc">${esc(project.desc)}</p>
             <dl class="pv-meta">${project.meta.map((m) => `<div><dt>${esc(m.label)}</dt><dd>${esc(m.text)}</dd></div>`).join("")}</dl>
@@ -362,15 +459,19 @@ function renderBody(p) {
       // status line: counts come straight from data.tech so the copy can't drift;
       // each count carries the tile's tier swatch instead of explaining tiers away
       const tech = window.DATA?.tech || [];
-      const core = tech.filter((t) => t.tier === 1).length;
-      const rest = tech.length - core;
-      const coreLabel = esc(c.status?.core ?? "core");
-      const moreLabel = esc(c.status?.more ?? "on my radar");
+      const main = tech.filter((t) => t.tier === 1).length;
+      const used = tech.filter((t) => t.tier === 2).length;
+      const env = tech.filter((t) => t.tier === 3).length;
+      const coreLabel = esc(c.status?.core ?? "main");
+      const moreLabel = esc(c.status?.more ?? "used before");
+      const envLabel = esc(c.status?.env ?? "environment");
       return `<div class="d-body tech">
         <div class="statusline rv" style="--i:2">
-          <span class="ct ct--core"><b>${core}</b>${coreLabel}</span>
+          <span class="ct ct--core"><b>${main}</b>${coreLabel}</span>
           <i class="sep" aria-hidden="true">·</i>
-          <span class="ct ct--more"><b>${rest}</b>${moreLabel}</span>
+          <span class="ct ct--more"><b>${used}</b>${moreLabel}</span>
+          <i class="sep" aria-hidden="true">·</i>
+          <span class="ct ct--env"><b>${env}</b>${envLabel}</span>
           <span class="hint">${esc(c.hint)}</span>
         </div>
         <div class="cloud rv" style="--i:3" data-cloud></div>
@@ -526,17 +627,24 @@ let reduced = rmq.matches;
 
 // A UI resize, not a film cut: short, decisive, settles hard.
 const OPEN = {
-  ms: reduced ? 240 : 950,
-  lag: reduced ? 0 : 70, // height trails width slightly: the panel unfolds rather than zooms
-  css: "cubic-bezier(.3,0,0,1)",
-  ease: bezier(0.3, 0, 0, 1),
+  ms: 250,
+  lag: 0,
+  css: "cubic-bezier(.23,1,.32,1)",
+  ease: bezier(0.23, 1, 0.32, 1),
 };
 const CLOSE = {
-  ms: reduced ? 220 : 720,
-  lag: reduced ? 0 : 60,
-  css: "cubic-bezier(.4,0,.1,1)",
-  ease: bezier(0.4, 0, 0.1, 1),
+  ms: 200,
+  lag: 0,
+  css: OPEN.css,
+  ease: OPEN.ease,
 };
+
+const root = document.documentElement;
+document.addEventListener("keydown", () => root.classList.add("is-keyboard"), true);
+document.addEventListener("pointerdown", () => root.classList.remove("is-keyboard"), true);
+document.addEventListener("click", (e) => {
+  if (e.detail === 0) root.classList.add("is-keyboard");
+}, true);
 
 /* ──────────────────────────────────────────────────────────────
    Name — the masthead: the favicon grown into a nameplate (cream on a cherry block) and a four-quadrant caret (one
@@ -986,6 +1094,7 @@ function boot(data) {
   }
 
   function showGhost(panel, duration, peakAt) {
+    if (instant) return;
     const r = quadRect(panel);
     Object.assign(ghost.style, {
       left: `${r.left}px`,
@@ -1001,17 +1110,45 @@ function boot(data) {
 
   let state = "idle";
 
-  // Input that arrives mid-animation isn't dropped: the latest one is kept
-  // and replayed as soon as the current transition settles.
+  let instant = false;
+  let moving = [];
+  let resume = new Map();
   let queued = null;
+  function motion(el, frames, opts) {
+    const start = resume.get(el);
+    if (start) {
+      frames = [start, frames.at(-1)];
+      opts = { ...opts, easing: OPEN.css };
+    }
+    const animation = el.animate(frames, { ...opts, duration: instant ? 0 : opts.duration });
+    moving.push(animation);
+    return animation;
+  }
   function act(fn) {
-    if (state === "idle" || state === "open") fn();
-    else queued = fn;
+    const immediate = reduced || root.classList.contains("is-keyboard");
+    const run = () => {
+      instant = immediate;
+      moving = [];
+      fn();
+      resume.clear();
+    };
+    if (state === "idle" || state === "open") run();
+    else {
+      queued = run;
+      // Capture before finishing: the next move starts at the visible position.
+      const running = moving.filter((a) => a.playState === "running");
+      if (running.length) resume = new Map(running.map((a) => {
+        const el = a.effect.target;
+        const style = getComputedStyle(el);
+        return [el, { transform: style.transform, opacity: style.opacity }];
+      }));
+      moving.forEach((a) => { if (a.playState === "running") a.finish(); });
+    }
   }
   function flush() {
     const fn = queued;
     queued = null;
-    if (fn) requestAnimationFrame(fn);
+    if (fn) queueMicrotask(fn);
   }
   let current = null;
 
@@ -1050,7 +1187,7 @@ function boot(data) {
     const sb = stage.getBoundingClientRect();
 
     stage.classList.add("is-open");
-    nameEl.style.setProperty("--nt", `${OPEN.ms}ms ${OPEN.css}`);
+    nameEl.style.setProperty("--nt", `${instant ? 0 : OPEN.ms}ms ${OPEN.css}`);
     nameEl.classList.add("is-small");
     panel.classList.add("is-active", "is-reading");
     panels.forEach((p) => {
@@ -1059,7 +1196,7 @@ function boot(data) {
     face.setAttribute("aria-expanded", "true");
     face.tabIndex = -1;
     detail.inert = false;
-    desk.pulse(...cornerOf(panel, sb), 1, wave(160, OPEN.ms)); // a beat after the sheet starts: it seems to push the air
+    if (!instant) desk.pulse(...cornerOf(panel, sb), 1, wave(0, OPEN.ms));
 
     // The face title becomes the detail title: same glyphs, carried across the stage.
     fTitle.style.transition = "none";
@@ -1068,9 +1205,9 @@ function boot(data) {
     const k = keyframes(OPEN, true, panel.dataset.q);
     const opts = { duration: k.total, easing: "linear", fill: "forwards" };
     const anims = [
-      win.animate(k.win, opts),
-      canvas.animate(k.canvas, opts),
-      dTitle.animate(
+      motion(win, k.win, opts),
+      motion(canvas, k.canvas, opts),
+      motion(dTitle,
         [
           {
             transform: `translate(${from.left - to.left}px, ${from.top - to.top}px)`,
@@ -1082,12 +1219,10 @@ function boot(data) {
     ];
     showGhost(panel, k.total * 1.4, 0.1);
 
-    const reveal = setTimeout(() => {
-      detail.classList.add("is-in");
-      flashGrid(detail);
-      syncCols(detail);
-      countUp(detail);
-    }, OPEN.ms * 0.5);
+    detail.classList.add("is-in");
+    flashGrid(detail);
+    syncCols(detail);
+    countUp(detail);
 
     await anims[0].finished;
     fTitle.style.transition = "";
@@ -1099,7 +1234,6 @@ function boot(data) {
     stage.classList.add("is-still");
     panel.classList.add("is-expanded");
     anims.forEach((a) => a.cancel());
-    clearTimeout(reveal);
     if (!detail.classList.contains("is-in")) countUp(detail);
     detail.classList.add("is-in");
     dTitle.focus({ preventScroll: true });
@@ -1109,7 +1243,7 @@ function boot(data) {
 
   async function close() {
     if (state !== "open" || !current) return;
-    closeTake();
+    closeTake(true);
     state = "closing";
     const panel = current;
     const { win, canvas, face, fTitle, detail, dTitle } = parts(panel);
@@ -1123,18 +1257,18 @@ function boot(data) {
       p.inert = false;
     });
     stage.classList.remove("is-open");
-    nameEl.style.setProperty("--nt", `${CLOSE.ms}ms ${CLOSE.css}`);
+    nameEl.style.setProperty("--nt", `${instant ? 0 : CLOSE.ms}ms ${CLOSE.css}`);
     nameEl.classList.remove("is-small");
-    desk.pulse(...cornerOf(panel, sb), 0.55, wave(0, CLOSE.ms)); // softer: the sheet folds back into its corner
+    if (!instant) desk.pulse(...cornerOf(panel, sb), 0.55, wave(0, CLOSE.ms));
 
     const k = keyframes(CLOSE, false, panel.dataset.q);
     const opts = { duration: k.total, easing: "linear" };
     // Keyframes start at full size, so dropping the expanded class under them is seamless.
-    const anims = [win.animate(k.win, opts), canvas.animate(k.canvas, opts)];
+    const anims = [motion(win, k.win, opts), motion(canvas, k.canvas, opts)];
     panel.classList.remove("is-expanded");
 
     const to = fTitle.getBoundingClientRect();
-    const flight = dTitle.animate(
+    const flight = motion(dTitle,
       [
         { transform: "none" },
         {
@@ -1181,6 +1315,7 @@ function boot(data) {
     const face = panel.querySelector(".face");
     // the hub leans toward the hovered corner and the other three step back
     face.addEventListener("pointerenter", () => {
+      if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
       hovered = panel;
       tintName(panel);
       stage.dataset.hover = panel.dataset.q;
@@ -1319,7 +1454,7 @@ function boot(data) {
   }
   // the first section opened shows its grid for a beat — a reveal, not a setting
   function flashGrid(detail) {
-    if (gridPinned || gridFlashed || reduced) {
+    if (gridPinned || gridFlashed || reduced || instant) {
       showGrid(detail, gridPinned);
       return;
     }
@@ -1331,7 +1466,7 @@ function boot(data) {
   // first, so the unit beside it never shifts while the digits run.
   const easeOut = bezier(0.16, 1, 0.3, 1);
   function countUp(detail) {
-    if (reduced) return;
+    if (reduced || instant) return;
     detail.querySelectorAll(".stats .num").forEach((el) => {
       const final = el.dataset.v ?? (el.dataset.v = el.textContent);
       if (!/^\d+(\.\d+)?$/.test(final)) return;
@@ -1376,17 +1511,14 @@ function boot(data) {
      current one (which drifts back and dims), transform/opacity only.
      ────────────────────────────────────────────────────────────── */
   const NAMES = data.panels.map((p) => p.face.title);
-  const SWITCH = { ms: reduced ? 1 : 720, css: "cubic-bezier(.3,0,0,1)" };
+  const SWITCH = { ms: 250, css: OPEN.css };
 
   // The preference can change mid-session: the CSS re-reads it on its own, but these
   // timings are captured in JS, so keep them in step too.
   rmq.addEventListener("change", (e) => {
     reduced = e.matches;
-    OPEN.ms = reduced ? 240 : 950;
-    OPEN.lag = reduced ? 0 : 70;
-    CLOSE.ms = reduced ? 220 : 720;
-    CLOSE.lag = reduced ? 0 : 60;
-    SWITCH.ms = reduced ? 1 : 720;
+    if (reduced) moving.forEach((a) => { if (a.playState === "running") a.finish(); });
+    if (reduced) flightsDone.forEach((a) => { if (a.playState === "running") a.finish(); });
   });
 
   panels.forEach((panel, i) => {
@@ -1422,7 +1554,7 @@ function boot(data) {
 
   async function step(dir) {
     if (state !== "open" || !current) return;
-    closeTake();
+    closeTake(true);
     state = "switching";
     const from = current;
     const to =
@@ -1444,30 +1576,31 @@ function boot(data) {
     tintName(null);
     to.style.setProperty("--sdir", dir); // which edge leads: it carries the sheet's shadow
     const sb = stage.getBoundingClientRect(); // (snap() has just laid out: no extra cost)
-    desk.pulse(dir === 1 ? sb.right : sb.left, sb.top + sb.height / 2, 0.7, wave(0, SWITCH.ms));
+    if (!instant) desk.pulse(dir === 1 ? sb.right : sb.left, sb.top + sb.height / 2, 0.7, wave(0, SWITCH.ms));
     stage.classList.add("is-switching");
     showGrid(a.detail, false);
 
     const opts = { duration: SWITCH.ms, easing: SWITCH.css };
-    const inAnim = b.win.animate(
+    const inAnim = motion(b.win,
       [{ transform: `translateX(${dir * 100}%)` }, { transform: "none" }],
       opts,
     );
-    const outAnim = a.win.animate(
+    const outAnim = motion(a.win,
       [
         { transform: "none", opacity: 1 },
         { transform: `translateX(${dir * -28}%)`, opacity: 0.35 },
       ],
       { ...opts, fill: "forwards" },
     );
-    setTimeout(() => {
-      b.detail.classList.add("is-in");
-      showGrid(b.detail, gridPinned);
-      syncCols(b.detail);
-      countUp(b.detail);
-    }, SWITCH.ms * 0.25);
+    b.detail.classList.add("is-in");
+    showGrid(b.detail, gridPinned);
+    syncCols(b.detail);
+    countUp(b.detail);
 
     await inAnim.finished;
+    b.detail.classList.add("is-in");
+    showGrid(b.detail, gridPinned);
+    syncCols(b.detail);
 
     // retire the old panel behind the new one, straight to its covered state
     snap(from, () => {
@@ -1518,12 +1651,24 @@ function boot(data) {
      ────────────────────────────────────────────────────────────── */
   const TECH = data.tech || [];
   const TECH_BY_ID = Object.fromEntries(TECH.map((t) => [t.id, t]));
+  // Technologies whose brand has no Simple Icons mark fall back to a monogram,
+  // so every tile stays a tile (and stays tappable) instead of going blank.
   const icon = (id) => {
     const t = TECH_BY_ID[id];
-    return t
-      ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${t.d}"/></svg>`
-      : "";
+    if (!t) return "";
+    if (t.d) {
+      const rule = t.fr ? ` fill-rule="${t.fr}"` : "";
+      return `<svg viewBox="${t.vb || "0 0 24 24"}" aria-hidden="true"><path${rule} d="${t.d}"/></svg>`;
+    }
+    const mono = (t.name.match(/[A-Za-z0-9]+/g) || [])
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
+    return `<span class="mono" aria-hidden="true">${esc(mono || "?")}</span>`;
   };
+  const tierLabel = (t) =>
+    t.tier === 1 ? UI.dailyDriver : t.tier === 3 ? UI.environment : UI.whenFits;
 
   // scene stickers
   document.querySelectorAll("[data-icon]").forEach((el) => {
@@ -1548,6 +1693,7 @@ function boot(data) {
       const sizes = [];
       const order = [
         ...TECH.filter((x) => x.tier === 1),
+        ...TECH.filter((x) => x.tier === 3),
         ...TECH.filter((x) => x.tier === 2),
       ];
       cloud.innerHTML =
@@ -1566,7 +1712,7 @@ function boot(data) {
               dir = rand() < 0.5 ? "normal" : "reverse";
             sizes[k] = x.tier === 1 ? 1 + rand() * 0.08 : 0.9 + rand() * 0.16;
             return `<div class="tk t${x.tier}" style="--rz:${rz}deg;--ft:${ft}s;--fd:${fd}s;--st:${st}s;--ax:${ax}px;--ay:${ay}px;--sw:${sw}deg;--fdir:${dir};--sz:${sizes[k].toFixed(3)};--k:${k}">
-      <button type="button" data-id="${x.id}" aria-expanded="false" aria-controls="take" aria-label="${esc(x.name)} — ${x.tier === 1 ? UI.dailyDriver : UI.whenFits}. ${esc(UI.showTake)}">${icon(x.id)}</button>
+      <button type="button" data-id="${x.id}" aria-expanded="false" aria-controls="take" aria-label="${esc(x.name)} — ${esc(tierLabel(x))}. ${esc(UI.showTake)}">${icon(x.id)}</button>
       <span class="nm" aria-hidden="true">${esc(x.name)}</span>
     </div>`;
           })
@@ -1592,7 +1738,7 @@ function boot(data) {
         const grid = w < 560;
         cloud.classList.toggle("is-grid", grid);
         if (grid) {
-          const cols = w < 330 ? 4 : w < 440 ? 5 : 6;
+          const cols = w < 440 ? 5 : 6;
           // the right pad (in the CSS too) leaves room for the corner tabs and shadows
           const gap = 12, // = --gx
             pad = 4 + 14;
@@ -1737,13 +1883,24 @@ function boot(data) {
     })();
 
   let takeFor = null;
+  let takeHide = 0;
   const plural = new Intl.PluralRules(document.documentElement.lang || "en");
-  function closeTake() {
-    if (!takeFor) return false;
-    takeFor.setAttribute("aria-expanded", "false");
-    takeFor.parentElement.classList.remove("open");
+  function closeTake(immediate = false) {
+    if (!takeFor && !take?.classList.contains("is-closing")) return false;
+    takeFor?.setAttribute("aria-expanded", "false");
+    takeFor?.parentElement.classList.remove("open");
     takeFor = null;
-    take.hidden = true;
+    take.inert = true;
+    clearTimeout(takeHide);
+    const hide = () => {
+      take.hidden = true;
+      take.classList.remove("is-closing");
+    };
+    if (immediate || root.classList.contains("is-keyboard")) hide();
+    else {
+      take.classList.add("is-closing");
+      takeHide = setTimeout(hide, 160);
+    }
     return true;
   }
   function openTake(btn) {
@@ -1754,17 +1911,32 @@ function boot(data) {
       return;
     }
     closeTake();
+    clearTimeout(takeHide);
+    take.classList.remove("is-closing");
+    take.inert = false;
     takeFor = btn;
     btn.setAttribute("aria-expanded", "true");
     btn.parentElement.classList.add("open");
     take.querySelector(".take-ico").innerHTML = icon(t.id);
     take.querySelector("h3").textContent = t.name;
-    const yrs = new Date().getFullYear() - t.since;
-    const unit = plural.select(yrs) === "one" ? UI.yr : UI.yrs;
-    take.querySelector(".take-meta").innerHTML =
-      `${esc(t.tier === 1 ? UI.dailyDriver : UI.whenFits)} · <span>${esc(t.since)}</span> · <span>${esc(yrs)} ${esc(unit)}</span>`;
-    take.querySelector("p").textContent = t.take;
-    take.querySelector("footer em").textContent = t.used;
+    // The notes are being filled in later: a technology with no `since`,
+    // `take` or `used` shows only the parts it actually has.
+    const meta = [esc(tierLabel(t))];
+    if (t.since) {
+      const yrs = new Date().getFullYear() - t.since;
+      const unit = plural.select(yrs) === "one" ? UI.yr : UI.yrs;
+      meta.push(
+        `<span>${esc(t.since)}</span>`,
+        `<span>${esc(yrs)} ${esc(unit)}</span>`,
+      );
+    }
+    take.querySelector(".take-meta").innerHTML = meta.join(" · ");
+    const copy = take.querySelector("p");
+    copy.textContent = t.take || "";
+    copy.hidden = !t.take;
+    const foot = take.querySelector("footer");
+    foot.hidden = !t.used;
+    if (t.used) take.querySelector("footer em").textContent = t.used;
     take.hidden = false;
 
     // place beside the icon — or as a bottom sheet when the body is too narrow
@@ -1805,9 +1977,6 @@ function boot(data) {
       take.style.top = `${Math.round(y)}px`;
       take.style.setProperty("--tox", ox);
     }
-    take.style.animation = "none";
-    void take.offsetWidth;
-    take.style.animation = "";
   }
   if (cloud && take) {
     cloud.addEventListener("click", (e) => {
@@ -1956,21 +2125,34 @@ function boot(data) {
 
   document.querySelectorAll("[data-copy]").forEach((btn) => {
     const original = btn.textContent;
+    const label = document.createElement("span");
+    label.textContent = original;
+    const check = document.createElement("span");
+    check.className = "copy-check";
+    check.setAttribute("aria-hidden", "true");
+    check.textContent = "✓";
+    btn.replaceChildren(label, check);
+    let reset = 0;
     // the label swap is visual; screen readers hear the result from a status beside it
     const status = document.createElement("span");
     status.className = "sr";
     status.setAttribute("role", "status");
     btn.after(status);
     btn.addEventListener("click", async () => {
+      clearTimeout(reset);
       try {
         await navigator.clipboard.writeText(btn.dataset.copy);
-        btn.textContent = UI.copied;
+        label.textContent = UI.copied;
+        btn.classList.add("is-copied");
       } catch {
-        btn.textContent = UI.copyFallback;
+        label.textContent = UI.copyFallback;
+        btn.classList.remove("is-copied");
       }
-      status.textContent = btn.textContent;
-      setTimeout(() => {
-        btn.textContent = original;
+      status.textContent = label.textContent;
+      clearTimeout(reset);
+      reset = setTimeout(() => {
+        label.textContent = original;
+        btn.classList.remove("is-copied");
         status.textContent = "";
       }, 1800);
     });
@@ -1993,10 +2175,10 @@ try {
   bootSeen = sessionStorage.getItem("booted") === "1";
   sessionStorage.setItem("booted", "1");
 } catch {}
-const BOOT_MIN = reduced ? 300 : bootSeen ? 1500 : 2800;
+const BOOT_MIN = reduced ? 300 : bootSeen ? 500 : 2000;
 // steps land no faster than this, so the log reads as a sequence even when
 // everything is already cached
-const STEP_GAP = reduced ? 0 : bootSeen ? 260 : 480;
+const STEP_GAP = reduced ? 0 : bootSeen ? 80 : 340;
 let bootDone = false;
 let flightsDone = []; // the first flight's animations, handed to the second
 
@@ -2011,7 +2193,7 @@ let lit = 0,
   pctNow = 0,
   pctRaf = 0,
   stepFrom = 0, // navigation start: the first step reports when data.js was in
-  nextAt = bootStart + (reduced ? 0 : bootSeen ? 450 : 800), // all four tiles have landed
+  nextAt = bootStart + (reduced ? 0 : bootSeen ? 150 : 500), // all four tiles have landed
   bootQueue = Promise.resolve();
 function bootCount() {
   pctRaf = 0;
@@ -2050,10 +2232,7 @@ function bootStep(i) {
   return bootQueue;
 }
 
-// The hand-off: each tile grows into the quadrant it stands for. Real geometry,
-// not a scale — the outline never thickens and the texture never stretches —
-// and on the way the CSS strips its sticker edge and lowers the panel's veil
-// over it, so it lands as exactly the ground of that quadrant.
+// Measure once; fly the tiles with transforms so loading never animates layout.
 function handoff() {
   const wins = [...document.querySelectorAll("#stage .panel .win")];
   if (reduced || !bootTiles.length || bootTiles.length !== wins.length) return null;
@@ -2068,54 +2247,56 @@ function handoff() {
   });
   return bootTiles.map((t, i) => {
     Object.assign(t.style, { position: "fixed", margin: "0", ...box(from[i]) });
-    return t.animate([box(from[i]), box(to[i])], {
-      duration: 980,
-      delay: i * 50,
-      easing: "cubic-bezier(.7,0,.16,1)",
+    t.style.transformOrigin = "0 0";
+    return t.animate([
+      { transform: "none" },
+      { transform: `translate(${to[i].left - from[i].left}px, ${to[i].top - from[i].top}px) scale(${to[i].width / from[i].width}, ${to[i].height / from[i].height})` },
+    ], {
+      duration: 620,
+      easing: OPEN.css,
       fill: "forwards",
     });
   });
 }
 
-// The second flight: the tiles don't dissolve, they become the masthead's mark.
-// Plain and tight: each tile comes alive (the offline veil lifts, the sticker
-// edge returns) and, in section order, travels to its cell in the caret while
-// its box shrinks to the cell's — real geometry, so it is never squashed and
-// the outline stays one thickness — turning to the mark's tilt as it goes,
-// with a small overshoot at the end. Targets are measured from layout.
+// The second flight carries each tile into its cell in the masthead's mark.
 function toMark() {
   const mark = document.querySelector(".name .mark");
   const plate = mark?.parentElement;
   const cells = mark ? [...mark.children] : [];
   if (reduced || !plate || cells.length !== bootTiles.length) return null;
-  const pr = plate.getBoundingClientRect();
+  document.body.classList.add("is-gathering"); // measure the mark at its final scale before flying into it
   const ang = parseFloat(getComputedStyle(mark).rotate) || 0; // the tilt it rests at, degrees
-  const rad = (ang * Math.PI) / 180;
-  // the mark turns about 50% 80% of itself
-  const ox = pr.left + mark.offsetLeft + mark.offsetWidth * 0.5;
-  const oy = pr.top + mark.offsetTop + mark.offsetHeight * 0.8;
+  const targets = cells.map((cell) => {
+    const rect = cell.getBoundingClientRect(), style = getComputedStyle(cell);
+    return {
+      x: rect.left + rect.width / 2, y: rect.top + rect.height / 2,
+      width: parseFloat(style.width), height: parseFloat(style.height),
+    };
+  });
   bootEl.classList.add("is-fly"); // veil off, sticker edge back (CSS)
+  const fromRects = bootTiles.map((t) => t.getBoundingClientRect());
   return bootTiles.map((t, i) => {
-    const r = t.getBoundingClientRect(); // where the first flight left it: its quadrant
+    const r = fromRects[i];
     flightsDone[i]?.cancel();
-    const c = cells[i];
-    const side = c.offsetWidth;
-    const dx = pr.left + mark.offsetLeft + c.offsetLeft + side / 2 - ox;
-    const dy = pr.top + mark.offsetTop + c.offsetTop + side / 2 - oy;
-    const cx = ox + dx * Math.cos(rad) - dy * Math.sin(rad);
-    const cy = oy + dx * Math.sin(rad) + dy * Math.cos(rad);
-    const box = (L, T, W, H) => ({ left: `${L}px`, top: `${T}px`, width: `${W}px`, height: `${H}px` });
-    const from = box(r.left, r.top, r.width, r.height);
-    const over = box(cx - side * 0.58, cy - side * 0.58, side * 1.16, side * 1.16); // a touch large, then settles
-    const to = box(cx - side / 2, cy - side / 2, side, side);
-    Object.assign(t.style, { position: "fixed", margin: "0", transformOrigin: "50% 50%", ...from });
+    const tx = targets[i].x - (r.left + r.width / 2);
+    const ty = targets[i].y - (r.top + r.height / 2);
+    const sx = targets[i].width / r.width, sy = targets[i].height / r.height;
+    const target = `translate(${tx}px, ${ty}px) rotate(${ang}deg) scale(${sx}, ${sy})`;
+    Object.assign(t.style, {
+      position: "fixed", margin: "0", transformOrigin: "50% 50%",
+      left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`,
+    });
     return t.animate(
       [
-        { ...from, transform: "rotate(0deg)", easing: "cubic-bezier(.6,0,.2,1)" },
-        { ...over, transform: `rotate(${ang}deg)`, offset: 0.82, easing: "cubic-bezier(.3,0,.3,1)" },
-        { ...to, transform: `rotate(${ang}deg)` },
+        { transform: "none" },
+        {
+          transform: `translate(${tx * .44}px, ${ty * .44 - Math.min(56, r.height * .12)}px) rotate(${ang * .6}deg) scale(${.22 + .78 * sx}, ${.22 + .78 * sy})`,
+          offset: .45,
+        },
+        { transform: target },
       ],
-      { duration: 1000, delay: 140 + i * 80, fill: "forwards" },
+      { duration: 600, easing: OPEN.css, fill: "forwards" },
     );
   });
 }
@@ -2145,13 +2326,17 @@ function finishBoot() {
     document.body.classList.add("is-marked");
     return stageIn();
   }
-  const gone = () => bootEl.remove();
+  const gone = () => {
+    document.body.classList.remove("is-gathering");
+    bootEl.remove();
+  };
   // the real mark takes over from the tiles that became it
   const settle = () => {
+    document.body.classList.remove("is-gathering");
     document.body.classList.add("is-marked", "is-swap");
     setTimeout(() => document.body.classList.remove("is-swap"), 500);
     const fades = bootTiles.map((t) =>
-      t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: "linear", fill: "forwards" }),
+      t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: "linear", fill: "forwards" }),
     );
     Promise.all(fades.map((f) => f.finished)).then(gone, gone);
   };
@@ -2170,6 +2355,7 @@ function finishBoot() {
         Promise.all(fades.map((f) => f.finished)).then(gone, gone);
         return;
       }
+      flightsDone = home;
       Promise.all(home.map((f) => f.finished)).then(settle, settle);
     };
     Promise.all(flights.map((f) => f.finished)).then(land, land);
@@ -2198,6 +2384,7 @@ async function start() {
     return;
   }
   // tokens filled once, up front: everything below reads finished values
+  applyRepoProjects(window.DATA);
   const data = (window.DATA = resolveData(window.DATA));
   applyMeta(data.site?.meta);
   UI = { ...UI_DEFAULTS, ...(data.site?.ui || {}) };
@@ -2237,7 +2424,7 @@ async function start() {
   await bootStep(3);
   await shown;
   // a beat with all four online, then hand off
-  await new Promise((r) => setTimeout(r, reduced ? 0 : bootSeen ? 350 : 650));
+  await new Promise((r) => setTimeout(r, reduced ? 0 : bootSeen ? 80 : 150));
   requestAnimationFrame(finishBoot);
 }
 

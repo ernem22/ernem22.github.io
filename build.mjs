@@ -9,6 +9,11 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import vm from "node:vm";
 import { build } from "esbuild";
+import { fetchProjects } from "./scripts/fetch-projects.mjs";
+
+// Refresh the GitHub projects snapshot (best effort, cached for 6h).
+// Network failure never blocks the build; data.js stays the fallback.
+await fetchProjects({ quiet: true });
 
 const path = (f) => new URL(f, import.meta.url);
 const read = (f) => readFileSync(path(f), "utf8");
