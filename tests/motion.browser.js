@@ -22,7 +22,7 @@ async (page) => {
 
   await page.locator("#p-info .face").click();
   await page.waitForFunction(() => document.querySelector("#p-info.is-expanded"));
-  check(await page.evaluate(() => window.motionCalls.some((call) => call.classes === "win" && call.duration === 250)), "Pointer open timing");
+  check(await page.evaluate(() => window.motionCalls.some((call) => call.classes === "win" && call.duration === 670)), "Pointer open timing");
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector(".panel.is-active"));
 
@@ -46,6 +46,8 @@ async (page) => {
   await page.evaluate(() => { window.motionCalls = []; });
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.querySelector("#p-info.is-expanded"));
+  check(await page.locator(".scene--info .bob").evaluate((el) =>
+    getComputedStyle(el).animationName !== "none"), "Keyboard navigation stopped ambient animation");
   await page.keyboard.press("ArrowRight");
   await page.waitForFunction(() => document.querySelector("#p-projects.is-expanded"));
   await page.keyboard.press("ArrowRight");

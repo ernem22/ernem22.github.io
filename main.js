@@ -89,6 +89,8 @@ const UI_DEFAULTS = {
   dailyDriver: "daily driver",
   whenFits: "when it fits",
   showTake: "Show my take",
+  liveCapture: "live capture",
+  scrollPreview: "scroll to preview",
   loading: "loading",
   ready: "ready",
 };
@@ -305,6 +307,25 @@ function mockRepo(project) {
   return mockShell("repo", mockBar(`github.com/${owner}/${project.name}`), screen);
 }
 
+/* Real site capture: a tall screenshot inside a browser window. The image
+   scrolls under the pointer (fine pointers) or drifts on its own (touch). */
+function mockShot(project) {
+  const preview = project.preview;
+  let host = preview.url;
+  try {
+    const u = new URL(preview.url);
+    host = u.host.replace(/^www\./, "") + u.pathname.replace(/\/$/, "");
+  } catch {}
+  const screen = `<div class="screen">
+      <div class="shot" data-shot>
+        <img src="${esc(preview.image)}" width="${esc(preview.width)}" height="${esc(preview.height)}" alt="" loading="lazy" decoding="async">
+      </div>
+      <span class="shot-badge">${esc(UI.liveCapture)}</span>
+      <span class="shot-hint">${esc(UI.scrollPreview)}</span>
+    </div>`;
+  return mockShell("shot", mockBar(host), screen);
+}
+
 function mockMarkup(project) {
   const mock = project?.mock;
   if (mock && typeof mock === "object") {
@@ -314,6 +335,7 @@ function mockMarkup(project) {
     if (mock.type === "code") return mockCode(mock);
     if (mock.type === "tide") return mockTide(mock);
   }
+  if (project?.preview?.image) return mockShot(project);
   if (project?.repo) return mockRepo(project);
   return `<div class="mock" aria-hidden="true"><div class="bar"><i></i><i></i><i></i><span>${esc(project?.name)}</span></div><div class="screen"><p class="ln w70"></p><p class="ln w45"></p><p class="ln w55"></p></div></div>`;
 }
@@ -322,6 +344,10 @@ function mockMarkup(project) {
    time by scripts/fetch-projects.mjs; data.js.projectPreviews supplies local
    overrides (role, stack, and optional hand-built `mock`). */
 function repoProjects(repos, overrides = {}) {
+  const previews =
+    window.PROJECT_PREVIEWS && typeof window.PROJECT_PREVIEWS === "object"
+      ? window.PROJECT_PREVIEWS
+      : {};
   const when = (date) => {
     const d = date ? new Date(date) : null;
     if (!d || Number.isNaN(d.getTime())) return "";
@@ -350,6 +376,7 @@ function repoProjects(repos, overrides = {}) {
       year,
       kind: o.kind || [type, year].filter(Boolean).join(" · "),
       mock: o.mock || null,
+      preview: o.preview || previews[repo.name] || null,
       desc: o.desc || repo.description || "Open-source project on GitHub.",
       links: o.links || links,
       meta:
@@ -625,16 +652,16 @@ function bezier(x1, y1, x2, y2) {
 const rmq = matchMedia("(prefers-reduced-motion: reduce)");
 let reduced = rmq.matches;
 
-// A UI resize, not a film cut: short, decisive, settles hard.
+// Full-stage sheets need time to unfold; press feedback stays faster in CSS.
 const OPEN = {
-  ms: 250,
-  lag: 0,
-  css: "cubic-bezier(.23,1,.32,1)",
-  ease: bezier(0.23, 1, 0.32, 1),
+  ms: 620,
+  lag: 50,
+  css: "cubic-bezier(.32,.72,0,1)",
+  ease: bezier(0.32, 0.72, 0, 1),
 };
 const CLOSE = {
-  ms: 200,
-  lag: 0,
+  ms: 460,
+  lag: 35,
   css: OPEN.css,
   ease: OPEN.ease,
 };
@@ -1511,7 +1538,7 @@ function boot(data) {
      current one (which drifts back and dims), transform/opacity only.
      ────────────────────────────────────────────────────────────── */
   const NAMES = data.panels.map((p) => p.face.title);
-  const SWITCH = { ms: 250, css: OPEN.css };
+  const SWITCH = { ms: 520, css: OPEN.css };
 
   // The preference can change mid-session: the CSS re-reads it on its own, but these
   // timings are captured in JS, so keep them in step too.
@@ -1645,6 +1672,52 @@ function boot(data) {
     b.addEventListener("focus", () => showProject(i));
     b.addEventListener("click", () => showProject(i));
   });
+
+  /* Real captures: one tall image under a fixed window. Fine pointers scrub
+     it by position (one composited transform); touch lets it drift via CSS. */
+  (() => {
+    const fine = matchMedia("(hover: hover) and (pointer: fine)").matches;
+    document.querySelectorAll("[data-shot]").forEach((frame) => {
+      const img = frame.querySelector("img");
+      if (!img) return;
+      const measure = () => {
+        const travel = Math.min(0, frame.clientHeight - img.clientHeight);
+        frame.style.setProperty("--travel", `${travel}px`);
+        frame.classList.toggle("is-flat", travel > -8);
+      };
+      if (img.complete) measure();
+      else img.addEventListener("load", measure, { once: true });
+      new ResizeObserver(measure).observe(frame);
+      if (!fine) return;
+
+      let raf = 0;
+      let lastY = 0;
+      const place = () => {
+        raf = 0;
+        const r = frame.getBoundingClientRect();
+        if (!r.height) return;
+        const p = Math.min(1, Math.max(0, (lastY - r.top) / r.height));
+        frame.style.setProperty("--p", p.toFixed(4));
+      };
+      frame.addEventListener("pointerenter", (e) => {
+        if (frame.classList.contains("is-flat")) return;
+        lastY = e.clientY;
+        frame.classList.add("is-scrubbing");
+        place();
+      });
+      frame.addEventListener("pointermove", (e) => {
+        if (frame.classList.contains("is-flat")) return;
+        lastY = e.clientY;
+        if (!raf) raf = requestAnimationFrame(place);
+      });
+      frame.addEventListener("pointerleave", () => {
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        frame.classList.remove("is-scrubbing");
+        frame.style.setProperty("--p", "0");
+      });
+    });
+  })();
 
   /* ──────────────────────────────────────────────────────────────
      Techstack — icons (Simple Icons, CC0) come from data.js
@@ -1899,7 +1972,7 @@ function boot(data) {
     if (immediate || root.classList.contains("is-keyboard")) hide();
     else {
       take.classList.add("is-closing");
-      takeHide = setTimeout(hide, 160);
+      takeHide = setTimeout(hide, 260);
     }
     return true;
   }
@@ -2252,8 +2325,8 @@ function handoff() {
       { transform: "none" },
       { transform: `translate(${to[i].left - from[i].left}px, ${to[i].top - from[i].top}px) scale(${to[i].width / from[i].width}, ${to[i].height / from[i].height})` },
     ], {
-      duration: 620,
-      easing: OPEN.css,
+      duration: 860,
+      easing: "cubic-bezier(.77,0,.175,1)",
       fill: "forwards",
     });
   });
@@ -2296,7 +2369,7 @@ function toMark() {
         },
         { transform: target },
       ],
-      { duration: 600, easing: OPEN.css, fill: "forwards" },
+      { duration: 900, easing: "cubic-bezier(.77,0,.175,1)", fill: "forwards" },
     );
   });
 }
@@ -2336,7 +2409,7 @@ function finishBoot() {
     document.body.classList.add("is-marked", "is-swap");
     setTimeout(() => document.body.classList.remove("is-swap"), 500);
     const fades = bootTiles.map((t) =>
-      t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: "linear", fill: "forwards" }),
+      t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, easing: "linear", fill: "forwards" }),
     );
     Promise.all(fades.map((f) => f.finished)).then(gone, gone);
   };
@@ -2424,7 +2497,7 @@ async function start() {
   await bootStep(3);
   await shown;
   // a beat with all four online, then hand off
-  await new Promise((r) => setTimeout(r, reduced ? 0 : bootSeen ? 80 : 150));
+  await new Promise((r) => setTimeout(r, reduced ? 0 : bootSeen ? 120 : 250));
   requestAnimationFrame(finishBoot);
 }
 

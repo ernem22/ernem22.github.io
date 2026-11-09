@@ -54,6 +54,9 @@
 
   --ease: cubic-bezier(.23, 1, .32, 1);
   --ease-soft: cubic-bezier(.3, .1, .2, 1);
+  --motion-feedback: 120ms;
+  --motion-control: 260ms;
+  --motion-hover: 420ms;
 }
 /* 1.5px straddles a device pixel on a 1x screen: use a whole one there */
 @media (resolution: 1dppx) {
@@ -144,7 +147,7 @@ button { font: inherit; color: inherit; }
   /* steps back while a section is open: transform only, on the sheet's own
      timing (--nt, set by JS for opening / closing) */
   transform-origin: 50% 0;
-  transition: scale var(--nt, .25s var(--ease));
+  transition: scale var(--nt, .67s var(--ease));
   contain: layout style;
 }
 .name.is-small { scale: var(--name-k, .5); }
@@ -220,7 +223,7 @@ button { font: inherit; color: inherit; }
 .name .up {
   position: relative;
   display: block;
-  transition: translate .16s var(--ease);
+  transition: translate var(--motion-hover) var(--ease-soft);
 }
 /* the face carries the panels' grain, so it sits in the page like the rest of it */
 .name .fc {
@@ -267,7 +270,7 @@ body.is-ready .name .l { opacity: 1; }
   transform-origin: 50% 80%;
   opacity: 0;
   scale: .5;
-  transition: opacity .5s linear, scale .9s var(--ease), rotate .16s var(--ease);
+  transition: opacity .5s linear, scale .9s var(--ease), rotate var(--motion-hover) var(--ease-soft);
 }
 .name .mark::after {                       /* the paper's grain, over all four */
   content: "";
@@ -291,7 +294,7 @@ body.is-marked .name.is-lit .mark { rotate: 3deg; transition-delay: 0s; }
   font-style: normal;
   background: var(--g);
   box-shadow: inset 0 calc(var(--fs) * .02) 0 rgba(255, 255, 255, .6), inset 0 calc(var(--fs) * -.024) 0 rgba(134, 16, 36, .2);
-  transition: translate .16s var(--ease), scale .16s var(--ease);
+  transition: translate var(--motion-hover) var(--ease-soft), scale var(--motion-hover) var(--ease-soft);
 }
 .name .mark i[data-k="info"] { --g: var(--g-info); }
 .name .mark i[data-k="projects"] { --g: var(--g-projects); }
@@ -872,7 +875,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   inset: 0;
   background: var(--cream);
   opacity: .6;
-  transition: opacity .16s var(--ease);
+  transition: opacity var(--motion-hover) var(--ease-soft);
   will-change: opacity;
 }
 /* a soft pool of light behind the corner typography keeps it legible on any scene */
@@ -934,7 +937,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 .face .title {
   will-change: opacity;
   opacity: .78;
-  transition: opacity .16s var(--ease);
+  transition: opacity var(--motion-hover) var(--ease-soft);
 }
 
 .rule {
@@ -945,7 +948,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   transform: scaleX(.18);
   transform-origin: left;
   opacity: .5;
-  transition: transform .16s var(--ease), opacity .16s var(--ease);
+  transition: transform var(--motion-hover) var(--ease), opacity var(--motion-hover) var(--ease-soft);
 }
 .panel[data-q="tr"] .rule,
 .panel[data-q="br"] .rule { transform-origin: right; }
@@ -956,7 +959,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   font-size: var(--t-xs);
   line-height: var(--lh-small);
   color: var(--muted);
-  transition: opacity .16s var(--ease), color .16s linear;
+  transition: opacity var(--motion-hover) var(--ease-soft), color var(--motion-hover) linear;
 }
 
 .indicator {
@@ -972,7 +975,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   letter-spacing: .04em;
   opacity: 0;
   transform: translate(calc(var(--dx) * -10px), calc(var(--dy) * -10px));
-  transition: opacity .16s var(--ease), transform .16s var(--ease);
+  transition: opacity var(--motion-hover) var(--ease-soft), transform var(--motion-hover) var(--ease);
 }
 .indicator svg { width: 24px; height: 24px; rotate: var(--rot); stroke-width: var(--bw); stroke-linecap: square; }
 
@@ -1024,7 +1027,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
     linear-gradient(var(--cherry), var(--cherry)) center / 1px 100% no-repeat,
     linear-gradient(var(--cherry), var(--cherry)) center / 100% 1px no-repeat;
   pointer-events: none;
-  transition: opacity .16s var(--ease), transform .16s var(--ease);
+  transition: opacity var(--motion-hover) var(--ease-soft), transform var(--motion-hover) var(--ease);
 }
 .stage.is-open .hub { opacity: 0; }
 /* hovering a corner: the hub turns a quarter and leans toward it */
@@ -1046,7 +1049,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 }
 
 /* the panel being read: its scene switches off in place; the panel opens as a plain surface */
-.panel.is-reading .art { opacity: 0; transition: opacity .16s var(--ease); }
+.panel.is-reading .art { opacity: 0; transition: opacity .32s var(--ease-soft); }
 .panel.is-reading .canvas::after { opacity: 0; transition-duration: .3s; }
 .panel.is-reading .face .teaser,
 .panel.is-reading .face .rule { opacity: 0; transition-duration: .45s; }
@@ -1091,13 +1094,13 @@ body:not(.is-staged) .stage { visibility: hidden; }
 .panel.is-active .detail { opacity: 1; pointer-events: auto; }
 
 /* press: lifts a touch on hover, sinks into its shadow on click */
-.press { transition: transform .16s var(--ease), background-color .16s linear; }
+.press { transition: transform var(--motion-control) var(--ease), background-color var(--motion-control) linear; }
 .press:focus-visible { transform: translate(-1px, -1px); outline: none; }
 @media (hover: hover) and (pointer: fine) {
   .press:hover { transform: translate(-1px, -1px); outline: none; }
 }
 .press:focus-visible { outline: var(--bw) solid var(--cherry); outline-offset: 3px; }
-.press:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--cherry); transition-duration: .06s; }
+.press:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--cherry); transition-duration: var(--motion-feedback); }
 
 /* ── head ── */
 .d-head { display: flex; align-items: center; gap: 16px; }
@@ -1149,7 +1152,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 }
 .d-nav em { font-style: normal; }
 /* the arrow leans the way the switch goes */
-.d-nav button [aria-hidden] { display: inline-block; transition: transform .16s var(--ease); }
+.d-nav button [aria-hidden] { display: inline-block; transition: transform var(--motion-control) var(--ease); }
 .d-nav button:focus-visible [aria-hidden] { transform: translateX(calc(var(--dir, 1) * 3px)); }
 @media (hover: hover) and (pointer: fine) {
   .d-nav button:hover [aria-hidden] { transform: translateX(calc(var(--dir, 1) * 3px)); }
@@ -1227,7 +1230,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   border: var(--bw) solid var(--cherry);
   background: var(--cream);
   box-shadow: var(--sh-b);
-  transition: transform .16s var(--ease), background-color .16s linear;
+  transition: transform var(--motion-control) var(--ease), background-color var(--motion-control) linear;
 }
 .close i::before, .close i::after {
   content: "";
@@ -1245,7 +1248,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 @media (hover: hover) and (pointer: fine) {
   .close:hover i { transform: translate(-1px, -1px); background: var(--acc); }
 }
-.close:active i { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--cherry); transition-duration: .06s; }
+.close:active i { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--cherry); transition-duration: var(--motion-feedback); }
 .close:focus-visible { outline: none; }
 
 /* ── body: a real 12-column grid, and the overlay is drawn from it ──
@@ -1328,7 +1331,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 .detail.is-in .rv { opacity: 1; }
 .detail.is-out .rv { opacity: .001; }
 /* closing: out before the shrinking window reaches it */
-.detail.is-closing .rv { transition: opacity .16s linear; }
+.detail.is-closing .rv { transition: opacity .24s linear; }
 
 /* ── shared type ── */
 .label {
@@ -1507,7 +1510,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
 }
 .proj-list button:focus-visible { outline: var(--bw) solid var(--cherry); outline-offset: 2px; }
 /* only the number and name step in; the year column stays put */
-.proj-list .p-num, .proj-list .p-name { transition: transform .16s var(--ease); }
+.proj-list .p-num, .proj-list .p-name { transition: transform var(--motion-control) var(--ease); }
 .proj-list button.is-current .p-num, .proj-list button.is-current .p-name { transform: translateX(13px); }
 /* every number sits in its sticker box; only the current one is inked in, so
    selecting a row fills the box rather than popping one into existence */
@@ -1518,7 +1521,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   height: 30px;
   border: var(--bw) solid transparent;
   box-shadow: 0 0 0 var(--cherry);
-  transition: transform .16s var(--ease), background-color .16s linear;
+  transition: transform var(--motion-control) var(--ease), background-color var(--motion-control) linear;
 }
 .proj-list button.is-current .p-num {
   border-color: var(--cherry);
@@ -1541,12 +1544,12 @@ body:not(.is-staged) .stage { visibility: hidden; }
   opacity: 0;
   visibility: hidden;
   /* out first, then in: two mocks never double-expose */
-  transition: opacity .2s linear, visibility 0s .2s;
+  transition: opacity .38s linear, visibility 0s .38s;
 }
 .pv.is-current {
   opacity: 1;
   visibility: inherit;
-  transition: opacity .2s var(--ease), visibility 0s;
+  transition: opacity .38s var(--ease-soft), visibility 0s;
 }
 .pv-top { display: flex; align-items: center; gap: 14px; min-height: 34px; }
 .pv-top h3 { margin: 0; font-weight: 500; font-size: var(--t-xl); line-height: 24px; letter-spacing: -.025em; }
@@ -1897,7 +1900,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   animation:
     drift var(--ft, 9s) linear var(--fd, 0s) infinite var(--fdir, normal),
     sway var(--st, 5s) ease-in-out var(--fd, 0s) infinite alternate;
-  transition: background-color .2s linear, translate .25s var(--ease);
+  transition: background-color var(--motion-control) linear, translate .38s var(--ease);
   will-change: transform;
 }
 .tk button { --s: round(calc(var(--unit) * .56 * var(--sz, 1)), 2px); }
@@ -1924,7 +1927,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity .2s linear, translate .25s var(--ease);
+  transition: opacity .3s linear, translate .38s var(--ease);
 }
 .tk.t1 .nm { top: calc(round(calc(var(--unit) * .38 * var(--sz, 1)), 1px) + 4px); }
 /* "this opens": a tiny + tab on the corner; it rotates into × while open.
@@ -2012,7 +2015,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   transform-origin: var(--tox, 0) var(--toy, 0);
   opacity: 1;
   transform: none;
-  transition: opacity .16s var(--ease), transform .16s var(--ease);
+  transition: opacity var(--motion-control) var(--ease), transform var(--motion-control) var(--ease);
 }
 .take[hidden] { display: none; }
 .take.is-closing { opacity: 0; transform: scale(.95) translateY(6px); pointer-events: none; }
@@ -2066,7 +2069,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   font-size: var(--t-s);
   text-decoration: none;
 }
-.brief-list a i { font-style: normal; font-family: var(--mono); transition: transform .16s var(--ease); }
+.brief-list a i { font-style: normal; font-family: var(--mono); transition: transform var(--motion-control) var(--ease); }
 .brief-list a:focus-visible { background: var(--acc); }
 @media (hover: hover) and (pointer: fine) {
   .brief-list a:hover { background: var(--acc); }
@@ -2098,7 +2101,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   background: var(--cherry);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform .16s var(--ease);
+  transition: transform .48s var(--ease-soft);
 }
 .mail:focus-visible::after, .mail:active::after { transform: scaleX(1); }
 @media (hover: hover) and (pointer: fine) {
@@ -2122,7 +2125,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   top: 50%;
   opacity: 0;
   transform: translateY(-50%) scale(.95);
-  transition: opacity .16s var(--ease), transform .16s var(--ease);
+  transition: opacity var(--motion-control) var(--ease), transform var(--motion-control) var(--ease);
 }
 .copy-btn.is-copied .copy-check { opacity: 1; transform: translateY(-50%) scale(1); }
 
@@ -2139,7 +2142,7 @@ body:not(.is-staged) .stage { visibility: hidden; }
   text-decoration: none;
   transition: background-color .3s linear;
 }
-.socials a > * { transition: transform .16s var(--ease), opacity .16s var(--ease); }
+.socials a > * { transition: transform .36s var(--ease), opacity .3s var(--ease-soft); }
 .socials li:first-child a { border-top: 0; }
 .socials span { font-weight: 500; font-size: var(--t-m); line-height: 20px; }
 .socials em { font-style: normal; font-family: var(--mono); font-size: var(--m-m); line-height: var(--lh-small); color: var(--muted); }
@@ -2483,7 +2486,7 @@ a.soon { cursor: default; }
   transition: opacity .4s var(--ease-soft) .15s;
 }
 .boot.is-done { opacity: 0; pointer-events: none; }
-.boot-card { width: var(--cw); display: grid; row-gap: 14px; animation: boot-up .42s var(--ease) backwards; }
+.boot-card { width: var(--cw); display: grid; row-gap: 14px; animation: boot-up .6s var(--ease-soft) backwards; }
 
 /* ~/path ······ 075% */
 .boot-head {
@@ -2678,7 +2681,7 @@ a.soon { cursor: default; }
 .boot.is-handoff .boot-stage::after {
   opacity: 0;
   animation: none;
-  transition: opacity .18s var(--ease);
+  transition: opacity .3s var(--ease-soft);
 }
 .boot.is-handoff .boot-q {
   animation: none;
@@ -2712,9 +2715,11 @@ a.soon { cursor: default; }
   color: var(--cherry);
 }
 
-:root.is-keyboard *, :root.is-keyboard *::before, :root.is-keyboard *::after {
+:root.is-keyboard :is(button, a, [role="button"]),
+:root.is-keyboard :is(button, a, [role="button"]) *,
+:root.is-keyboard :is(button, a, [role="button"])::before,
+:root.is-keyboard :is(button, a, [role="button"])::after {
   transition: none !important;
-  animation: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
